@@ -1,5 +1,6 @@
 import Foundation
 
+// Places a widget at explicit bounds irrespective of the parent layout tree.
 public struct Overlay : Widget {
   public var content : AnyWidget
   public var bounds  : BoxBounds

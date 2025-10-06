@@ -5,6 +5,7 @@ public enum StatusItemAlignment {
   case trailing
 }
 
+// Simple descriptor used to render text segments inside the status bar.
 public struct StatusItem : Equatable {
   public var text      : String
   public var alignment : StatusItemAlignment
@@ -15,6 +16,7 @@ public struct StatusItem : Equatable {
   }
 }
 
+// Renders a single line status bar with left/right aligned segments.
 public struct StatusBar : Widget {
   public var items : [StatusItem]
   public var style : ColorPair
@@ -31,11 +33,13 @@ public struct StatusBar : Widget {
     var leftColumn  = context.bounds.column
     var rightColumn = context.bounds.maxCol
 
+    // Leading items push characters from the left edge.
     for item in items where item.alignment == .leading {
       commands.append(contentsOf: render(item: item, row: row, column: leftColumn))
       leftColumn += item.text.count + 1
     }
 
+    // Trailing items render in reverse order to avoid overlapping as we walk from right to left.
     for item in items.reversed() where item.alignment == .trailing {
       rightColumn -= item.text.count
       commands.append(contentsOf: render(item: item, row: row, column: rightColumn))

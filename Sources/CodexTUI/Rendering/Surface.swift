@@ -1,6 +1,7 @@
 import Foundation
 import TerminalOutput
 
+// Represents a single cell in the terminal buffer and the styling required to display it.
 public struct SurfaceTile : Equatable {
   public var character  : Character
   public var attributes : ColorPair
@@ -15,6 +16,7 @@ public extension SurfaceTile {
   static let blank : SurfaceTile = SurfaceTile(character: " ", attributes: ColorPair())
 }
 
+// Lightweight framebuffer used to track differences between frames for efficient redraws.
 public struct Surface {
   public private(set) var width    : Int
   public private(set) var height   : Int
@@ -57,16 +59,19 @@ public struct Surface {
     tiles[indexFor(row: row, column: column)] = tile
   }
 
+  // Snapshot the current frame so the diff can be computed after widgets finish rendering.
   public mutating func beginFrame () {
     previousFrameTiles = tiles
   }
 
+  // Produces a minimal list of changed tiles. When the surface dimensions change we fall back to a full refresh.
   public func diff () -> [SurfaceChange] {
     guard tiles.count == previousFrameTiles.count else { return fullRefreshChanges() }
 
     var changes = [SurfaceChange]()
     changes.reserveCapacity(tiles.count / 2)
 
+    // Translate flat array indices back into 1-based terminal coordinates as required by TerminalOutput.
     for index in tiles.indices where tiles[index] != previousFrameTiles[index] {
       let row    = index / width
       let column = index % width
@@ -104,6 +109,7 @@ public struct SurfaceChange : Equatable {
   public let tile   : SurfaceTile
 }
 
+// Converts surface mutations into terminal escape sequences.
 public enum SurfaceRenderer {
   public static func sequences ( for changes: [SurfaceChange] ) -> [AnsiSequence] {
     guard changes.isEmpty == false else { return [] }
@@ -111,6 +117,7 @@ public enum SurfaceRenderer {
     var sequences = [AnsiSequence]()
     sequences.reserveCapacity(changes.count * 3)
 
+    // Each change requires a cursor move, optional style change and the character itself.
     for change in changes {
       sequences.append(TerminalOutput.TerminalCommands.moveCursor(row: change.row, column: change.column))
 

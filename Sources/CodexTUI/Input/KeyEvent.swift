@@ -1,6 +1,7 @@
 import Foundation
 import TerminalInput
 
+// Normalised representation of keyboard input produced by TerminalInput.
 public struct KeyEvent : Equatable {
   public var key       : Key
   public var modifiers : KeyModifiers
@@ -11,6 +12,7 @@ public struct KeyEvent : Equatable {
   }
 }
 
+// Captures the different token families exposed by TerminalInput.
 public enum Key : Equatable {
   case character(Character)
   case control(TerminalInput.ControlKey)
@@ -19,6 +21,7 @@ public enum Key : Equatable {
   case meta(TerminalInput.MetaKey)
 }
 
+// Option set describing modifier flags that accompany an event.
 public struct KeyModifiers : OptionSet, Equatable {
   public let rawValue : UInt8
 
@@ -32,6 +35,7 @@ public struct KeyModifiers : OptionSet, Equatable {
 }
 
 public extension KeyEvent {
+  // Converts TerminalInput tokens into strongly typed key events, collapsing unsupported sequences into nil.
   static func from ( token: TerminalInput.Token ) -> KeyEvent? {
     switch token {
       case .text(let string) where string.count == 1:

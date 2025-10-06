@@ -1,5 +1,6 @@
 import Foundation
 
+// Composes menu, content and status bar regions into a vertically stacked layout.
 public struct Scaffold : Widget {
   public var menuBar   : MenuBar?
   public var content   : AnyWidget
@@ -18,6 +19,7 @@ public struct Scaffold : Widget {
     var contentTop    = rootBounds.row
     var contentBottom = rootBounds.maxRow
 
+    // Attach a menu bar if present and shift the content area down by one line.
     if let menuBar = menuBar {
       let menuBounds  = BoxBounds(row: rootBounds.row, column: rootBounds.column, width: rootBounds.width, height: 1)
       let menuContext = LayoutContext(bounds: menuBounds, theme: context.theme, focus: context.focus, environment: context.environment)
@@ -26,6 +28,7 @@ public struct Scaffold : Widget {
       contentTop += 1
     }
 
+    // Anchor the status bar to the bottom edge and shrink the content space accordingly.
     if let statusBar = statusBar {
       let statusBounds  = BoxBounds(row: rootBounds.maxRow, column: rootBounds.column, width: rootBounds.width, height: 1)
       let statusContext = LayoutContext(bounds: statusBounds, theme: context.theme, focus: context.focus, environment: context.environment)
@@ -38,6 +41,7 @@ public struct Scaffold : Widget {
       contentBottom = contentTop
     }
 
+    // The remaining area is dedicated to the primary content widget.
     let contentBounds = BoxBounds(row: contentTop, column: rootBounds.column, width: rootBounds.width, height: max(0, contentBottom - contentTop + 1))
     let contentContext = LayoutContext(bounds: contentBounds, theme: context.theme, focus: context.focus, environment: context.environment)
     let contentLayout  = content.layout(in: contentContext)

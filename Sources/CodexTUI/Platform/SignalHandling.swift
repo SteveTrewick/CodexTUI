@@ -7,6 +7,7 @@ import Glibc
 import Darwin
 #endif
 
+// Thin wrapper around DispatchSourceSignal that hides platform conditional imports.
 public final class SignalObserver {
   public typealias Handler = () -> Void
 
@@ -24,6 +25,7 @@ public final class SignalObserver {
     self.handler = handler
   }
 
+  // Begins listening for the configured signal and forwards notifications to the handler.
   public func start () {
     guard source == nil else { return }
 
@@ -39,6 +41,7 @@ public final class SignalObserver {
     signal(monitoredSignal, SIG_IGN)
   }
 
+  // Cancels the dispatch source and releases the handler closure.
   public func stop () {
     source?.cancel()
     source = nil

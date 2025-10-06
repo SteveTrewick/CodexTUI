@@ -1,5 +1,6 @@
 import Foundation
 
+// Captures the contextual information widgets require to calculate geometry and styling.
 public struct LayoutContext {
   public var bounds       : BoxBounds
   public var theme        : Theme
@@ -14,6 +15,7 @@ public struct LayoutContext {
   }
 }
 
+// Additional environmental values surfaced to widgets during layout.
 public struct EnvironmentValues {
   public var menuBarHeight   : Int
   public var statusBarHeight : Int
