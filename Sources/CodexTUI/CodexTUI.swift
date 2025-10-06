@@ -1,6 +1,6 @@
 import Foundation
-import TerminalInput
-import TerminalOutput
+@_exported import TerminalInput
+@_exported import TerminalOutput
 
 // The public namespace that wraps convenience factories for bootstrapping a CodexTUI runtime.
 public enum CodexTUI {
