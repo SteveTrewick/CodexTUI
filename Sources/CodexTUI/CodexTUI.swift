@@ -1,6 +1,2 @@
-public struct CodexTUI {
-    public private(set) var text = "Hello, World!"
+import Foundation
 
-    public init() {
-    }
-}
