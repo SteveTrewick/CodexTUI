@@ -1,4 +1,6 @@
 import XCTest
+import Dispatch
+import TerminalInput
 import TerminalOutput
 @testable import CodexTUI
 
@@ -45,4 +47,62 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(firstTile.map { String($0.character) }, "H")
     XCTAssertEqual(firstTile?.attributes.style, TerminalOutput.TextStyle.none)
   }
+
+  func testDriverDeliversKeyPressImmediatelyInRawMode () {
+    let connection    = TestTerminalConnection()
+    let terminal      = TerminalOutput.Terminal(connection: connection)
+    let input         = TerminalInput()
+    let mode          = TestTerminalModeController()
+    let scene         = Scene.standard(content: AnyWidget(Text("", origin: (row: 1, column: 1))))
+    let configuration = RuntimeConfiguration(usesAlternateBuffer: false, hidesCursor: false)
+    let driver        = TerminalDriver(
+      scene          : scene,
+      terminal       : terminal,
+      input          : input,
+      terminalMode   : mode,
+      configuration  : configuration,
+      signalObserver : SignalObserver(queue: DispatchQueue(label: "test-signal-queue"))
+    )
+
+    let expectation = expectation(description: "Key event delivered without buffering")
+
+    driver.onKeyEvent = { event in
+      XCTAssertEqual(event, KeyEvent(key: .character("a")))
+      XCTAssertTrue(mode.isRawModeActive)
+      expectation.fulfill()
+    }
+
+    driver.start()
+
+    input.dispatch?(.success(.text("a")))
+
+    wait(for: [expectation], timeout: 1.0)
+    XCTAssertEqual(mode.enterRawModeCount, 1)
+
+    driver.stop()
+
+    XCTAssertEqual(mode.restoreCount, 1)
+    XCTAssertFalse(mode.isRawModeActive)
+  }
+}
+
+private final class TestTerminalModeController: TerminalModeController {
+  private(set) var enterRawModeCount : Int = 0
+  private(set) var restoreCount      : Int = 0
+  private(set) var isRawModeActive   : Bool = false
+
+  override func enterRawMode () {
+    enterRawModeCount += 1
+    isRawModeActive    = true
+  }
+
+  override func restore () {
+    restoreCount    += 1
+    isRawModeActive  = false
+  }
+}
+
+private final class TestTerminalConnection: TerminalOutput.TerminalConnection {
+  func write ( data: Data ) throws { }
+  func flush () throws { }
 }

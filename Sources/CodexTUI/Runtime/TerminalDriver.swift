@@ -31,16 +31,18 @@ public final class TerminalDriver {
   public var onKeyEvent : ( (KeyEvent) -> Void )?
   public var onResize   : ( (BoxBounds) -> Void )?
 
-  private let input          : TerminalInput
-  private let terminal       : TerminalOutput.Terminal
-  private var surface        : Surface
-  private var signalObserver : SignalObserver
-  private var currentBounds  : BoxBounds
+  private let input           : TerminalInput
+  private let terminal        : TerminalOutput.Terminal
+  private let terminalMode    : TerminalModeController
+  private var surface         : Surface
+  private var signalObserver  : SignalObserver
+  private var currentBounds   : BoxBounds
 
-  public init ( scene: Scene, terminal: TerminalOutput.Terminal, input: TerminalInput, configuration: RuntimeConfiguration = RuntimeConfiguration(), signalObserver: SignalObserver = SignalObserver() ) {
+  public init ( scene: Scene, terminal: TerminalOutput.Terminal, input: TerminalInput, terminalMode: TerminalModeController = TerminalModeController(), configuration: RuntimeConfiguration = RuntimeConfiguration(), signalObserver: SignalObserver = SignalObserver() ) {
     self.scene           = scene
     self.terminal        = terminal
     self.input           = input
+    self.terminalMode    = terminalMode
     self.configuration   = configuration
     self.signalObserver  = signalObserver
     self.currentBounds   = configuration.initialBounds
@@ -53,6 +55,7 @@ public final class TerminalDriver {
     guard state == .stopped else { return }
 
     state = .running
+    terminalMode.enterRawMode()
     configureInput()
     configureSignalObserver()
     enterScreen()
@@ -64,6 +67,7 @@ public final class TerminalDriver {
     guard state == .running else { return }
 
     state = .suspended
+    terminalMode.restore()
     exitScreen()
   }
 
@@ -72,6 +76,7 @@ public final class TerminalDriver {
     guard state == .suspended else { return }
 
     state = .running
+    terminalMode.enterRawMode()
     enterScreen()
     redraw()
   }
@@ -82,6 +87,7 @@ public final class TerminalDriver {
 
     state = .stopped
     signalObserver.stop()
+    terminalMode.restore()
     exitScreen()
     input.dispatch = nil
   }
