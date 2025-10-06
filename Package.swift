@@ -15,6 +15,9 @@ let package = Package(
         .library(
             name: "CodexTUI",
             targets: ["CodexTUI"]),
+        .executable(
+            name: "CodexTUIDemo",
+            targets: ["CodexTUIDemo"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -27,6 +30,11 @@ let package = Package(
         .target(
             name: "CodexTUI",
             dependencies: ["TerminalInput", "TerminalOutput"]),
+        .executableTarget(
+            name: "CodexTUIDemo",
+            dependencies: [
+                "CodexTUI"
+            ]),
         .testTarget(
             name: "CodexTUITests",
             dependencies: ["CodexTUI"]),
