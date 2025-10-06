@@ -5,6 +5,11 @@ import PackageDescription
 
 let package = Package(
     name: "CodexTUI",
+    
+    platforms: [
+         .macOS(.v11),
+    ],
+    
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
@@ -24,5 +29,8 @@ let package = Package(
         .testTarget(
             name: "CodexTUITests",
             dependencies: ["CodexTUI"]),
-    ]
+    ],
+    
+    // lets use 5 innit.
+    swiftLanguageVersions: [.v5]
 )
