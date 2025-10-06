@@ -32,9 +32,7 @@ let package = Package(
             dependencies: ["TerminalInput", "TerminalOutput"]),
         .executableTarget(
             name: "CodexTUIDemo",
-            dependencies: [
-                "CodexTUI"
-            ]),
+            dependencies: ["CodexTUI"]),
         .testTarget(
             name: "CodexTUITests",
             dependencies: ["CodexTUI"]),

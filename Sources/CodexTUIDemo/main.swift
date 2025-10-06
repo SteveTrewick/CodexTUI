@@ -1,71 +1,101 @@
 import CodexTUI
+import Dispatch
 import Foundation
+import TerminalInput
 
-final class DemoController {
-  private let app       : Application
-  private let logBuffer : ScrollBuffer
+final class DemoApplication {
+  private let driver    : TerminalDriver
+  private let logBuffer : TextBuffer
+  private let waitGroup : DispatchSemaphore
+
+  private static let timestampFormatter : DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .short
+    formatter.timeStyle = .medium
+    return formatter
+  }()
 
   init () {
-    logBuffer = ScrollBuffer()
-    app       = Application(
-      menuBar : MenuBar(
-        items: [
-          MenuItem(
-            key      : "F",
-            title    : "File",
-            alignment: .leading
-          ) {
-            MessageBox(
-              title  : "File",
-              message: ["New", "Open", "Save"],
-              buttons: ["Close"]
-            )
-          }
-        ]
-      ),
-      statusBar: StatusBar(
-        items: [
-          StatusItem(
-            text      : "Press Ctrl+Q to quit",
-            alignment : .leading
-          ),
-          StatusItem(
-            text      : DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short),
-            alignment : .trailing
-          )
-        ]
-      ),
-      content  : SplitView(
-        orientation: .vertical,
-        leading    : TextView(
-          title : "Activity",
-          buffer: logBuffer
-        ),
-        trailing   : TextView(
-          title : "Details",
-          buffer: ScrollBuffer()
-        )
-      )
+    let theme = Theme.codex
+
+    logBuffer = TextBuffer(
+      identifier    : FocusIdentifier("log"),
+      lines         : [
+        "CodexTUI quick start",
+        "Press any key to log it.",
+        "Press ESC to exit."
+      ],
+      style         : theme.contentDefault,
+      highlightStyle: theme.highlight,
+      isInteractive : true
     )
 
-    app.bind(key: .control("q")) { [weak self] in self?.app.stop() }
-    app.bind(key: .function(2)) { [weak self] in self?.showInfoBox() }
+    waitGroup = DispatchSemaphore(value: 0)
+
+    let menuBar = MenuBar(
+      items            : [
+        MenuItem(title: "File", activationKey: .TAB, alignment: .leading, isHighlighted: true),
+        MenuItem(title: "Help", activationKey: .RETURN, alignment: .trailing)
+      ],
+      style            : theme.menuBar,
+      highlightStyle   : theme.highlight,
+      dimHighlightStyle: theme.dimHighlight
+    )
+
+    let statusBar = StatusBar(
+      items: [
+        StatusItem(text: "ESC closes the demo"),
+        StatusItem(text: DemoApplication.timestamp(), alignment: .trailing)
+      ],
+      style: theme.statusBar
+    )
+
+    let focusChain = FocusChain()
+    focusChain.register(node: logBuffer.focusNode())
+
+    let configuration = SceneConfiguration(
+      theme       : theme,
+      environment : EnvironmentValues(contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
+    )
+
+    let scene = Scene.standard(
+      menuBar     : menuBar,
+      content     : AnyWidget(logBuffer),
+      statusBar   : statusBar,
+      configuration: configuration,
+      focusChain  : focusChain
+    )
+
+    driver = CodexTUI.makeDriver(scene: scene)
+
+    driver.onKeyEvent = { [weak self] event in
+      self?.handle(event: event)
+    }
   }
 
   func run () {
-    logBuffer.append("CodexTUI demo started")
-    app.run()
+    driver.start()
+    waitGroup.wait()
   }
 
-  private func showInfoBox () {
-    app.present(
-      MessageBox(
-        title  : "CodexTUI",
-        message: ["Build expressive TUIs in Swift."],
-        buttons: ["OK"]
-      )
-    )
+  private func handle ( event: KeyEvent ) {
+    switch event.key {
+      case .meta(.escape)           :
+        driver.stop()
+        waitGroup.signal()
+
+      case .character(let character)           :
+        logBuffer.append(line: "Key pressed: \(character)")
+        driver.redraw()
+
+      default                       :
+        break
+    }
+  }
+
+  private static func timestamp () -> String {
+    return timestampFormatter.string(from: Date())
   }
 }
 
-DemoController().run()
+DemoApplication().run()
