@@ -1,0 +1,149 @@
+import Foundation
+import Dispatch
+import TerminalInput
+import TerminalOutput
+
+public struct RuntimeConfiguration {
+  public var initialBounds      : BoxBounds
+  public var usesAlternateBuffer: Bool
+  public var hidesCursor        : Bool
+
+  public init ( initialBounds: BoxBounds = BoxBounds(row: 1, column: 1, width: 80, height: 24), usesAlternateBuffer: Bool = true, hidesCursor: Bool = true ) {
+    self.initialBounds       = initialBounds
+    self.usesAlternateBuffer = usesAlternateBuffer
+    self.hidesCursor         = hidesCursor
+  }
+}
+
+public final class TerminalDriver {
+  public enum State {
+    case stopped
+    case running
+    case suspended
+  }
+
+  public var configuration       : RuntimeConfiguration
+  public var scene                : Scene
+  public private(set) var state   : State
+
+  public var onKeyEvent : ( (KeyEvent) -> Void )?
+  public var onResize   : ( (BoxBounds) -> Void )?
+
+  private let input          : TerminalInput
+  private let terminal       : TerminalOutput.Terminal
+  private var surface        : Surface
+  private var signalObserver : SignalObserver
+  private var currentBounds  : BoxBounds
+
+  public init ( scene: Scene, terminal: TerminalOutput.Terminal, input: TerminalInput, configuration: RuntimeConfiguration = RuntimeConfiguration(), signalObserver: SignalObserver = SignalObserver() ) {
+    self.scene           = scene
+    self.terminal        = terminal
+    self.input           = input
+    self.configuration   = configuration
+    self.signalObserver  = signalObserver
+    self.currentBounds   = configuration.initialBounds
+    self.surface         = Surface(width: configuration.initialBounds.width, height: configuration.initialBounds.height)
+    self.state           = .stopped
+  }
+
+  public func start () {
+    guard state == .stopped else { return }
+
+    state = .running
+    configureInput()
+    configureSignalObserver()
+    enterScreen()
+    redraw()
+  }
+
+  public func suspend () {
+    guard state == .running else { return }
+
+    state = .suspended
+    exitScreen()
+  }
+
+  public func resume () {
+    guard state == .suspended else { return }
+
+    state = .running
+    enterScreen()
+    redraw()
+  }
+
+  public func stop () {
+    guard state != .stopped else { return }
+
+    state = .stopped
+    signalObserver.stop()
+    exitScreen()
+    input.dispatch = nil
+  }
+
+  public func redraw () {
+    guard state == .running else { return }
+
+    do {
+      let sequences = scene.render(into: &surface, bounds: currentBounds)
+      try terminal.perform(sequences)
+      try terminal.flush()
+    } catch {
+      // Rendering failures should not crash the driver, but they can be surfaced via logging hooks in the future.
+    }
+  }
+
+  public func handleResize ( width: Int, height: Int ) {
+    currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
+    onResize?(currentBounds)
+    redraw()
+  }
+
+  private func configureInput () {
+    input.dispatch = { [weak self] result in
+      switch result {
+        case .success(let token):
+          self?.route(token: token)
+        case .failure:
+          break
+      }
+    }
+  }
+
+  private func configureSignalObserver () {
+    signalObserver.setHandler { [weak self] in
+      guard let self = self else { return }
+      self.handleResize(width: self.currentBounds.width, height: self.currentBounds.height)
+    }
+    signalObserver.start()
+  }
+
+  private func route ( token: TerminalInput.Token ) {
+    guard state == .running else { return }
+
+    guard let event = KeyEvent.from(token: token) else { return }
+    onKeyEvent?(event)
+  }
+
+  private func enterScreen () {
+    do {
+      if configuration.usesAlternateBuffer {
+        try terminal.perform([TerminalOutput.TerminalCommands.useAlternateBuffer()])
+      }
+      if configuration.hidesCursor {
+        try terminal.perform([TerminalOutput.TerminalCommands.hideCursor()])
+      }
+    } catch { }
+  }
+
+  private func exitScreen () {
+    do {
+      if configuration.hidesCursor {
+        try terminal.perform([TerminalOutput.TerminalCommands.showCursor()])
+      }
+      if configuration.usesAlternateBuffer {
+        try terminal.perform([TerminalOutput.TerminalCommands.usePrimaryBuffer()])
+      }
+      try terminal.flush()
+    } catch { }
+  }
+}
