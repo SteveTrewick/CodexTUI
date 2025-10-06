@@ -1,5 +1,6 @@
 import Foundation
 
+// Minimal widget that renders an immutable string starting at a fixed origin.
 public struct Text : Widget {
   public var content : String
   public var origin  : (row: Int, column: Int)
@@ -16,6 +17,7 @@ public struct Text : Widget {
     var commands = [RenderCommand]()
     commands.reserveCapacity(content.count)
 
+    // Emit a command for every character so the renderer can treat the text like any other widget output.
     for (offset, character) in content.enumerated() {
       commands.append(
         RenderCommand(

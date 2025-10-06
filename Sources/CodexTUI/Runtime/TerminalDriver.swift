@@ -3,6 +3,7 @@ import Dispatch
 import TerminalInput
 import TerminalOutput
 
+// Controls how the driver initialises and interacts with the terminal.
 public struct RuntimeConfiguration {
   public var initialBounds      : BoxBounds
   public var usesAlternateBuffer: Bool
@@ -15,6 +16,7 @@ public struct RuntimeConfiguration {
   }
 }
 
+// Orchestrates input handling, scene rendering and terminal lifecycle management.
 public final class TerminalDriver {
   public enum State {
     case stopped
@@ -46,6 +48,7 @@ public final class TerminalDriver {
     self.state           = .stopped
   }
 
+  // Boots the driver, taking ownership of terminal state and performing an initial render.
   public func start () {
     guard state == .stopped else { return }
 
@@ -56,6 +59,7 @@ public final class TerminalDriver {
     redraw()
   }
 
+  // Releases terminal mutations while keeping the scene in memory.
   public func suspend () {
     guard state == .running else { return }
 
@@ -63,6 +67,7 @@ public final class TerminalDriver {
     exitScreen()
   }
 
+  // Re-acquires the terminal and refreshes the display after a suspension.
   public func resume () {
     guard state == .suspended else { return }
 
@@ -71,6 +76,7 @@ public final class TerminalDriver {
     redraw()
   }
 
+  // Stops all processing and restores the terminal to its original state.
   public func stop () {
     guard state != .stopped else { return }
 
@@ -80,6 +86,7 @@ public final class TerminalDriver {
     input.dispatch = nil
   }
 
+  // Renders the scene hierarchy into terminal commands. Failures are intentionally swallowed to keep the UI responsive.
   public func redraw () {
     guard state == .running else { return }
 
@@ -92,12 +99,14 @@ public final class TerminalDriver {
     }
   }
 
+  // Updates the backing surface when the terminal reports a new size and informs listeners.
   public func handleResize ( width: Int, height: Int ) {
     currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
     onResize?(currentBounds)
     redraw()
   }
 
+  // Registers a dispatch closure that converts raw tokens into high level key events.
   private func configureInput () {
     input.dispatch = { [weak self] result in
       switch result {
@@ -109,6 +118,7 @@ public final class TerminalDriver {
     }
   }
 
+  // Subscribe to SIGWINCH so we can redraw when the user resizes the terminal window.
   private func configureSignalObserver () {
     signalObserver.setHandler { [weak self] in
       guard let self = self else { return }
@@ -117,6 +127,7 @@ public final class TerminalDriver {
     signalObserver.start()
   }
 
+  // Converts terminal tokens into semantic events and emits them to the driver callbacks.
   private func route ( token: TerminalInput.Token ) {
     guard state == .running else { return }
 
@@ -124,6 +135,7 @@ public final class TerminalDriver {
     onKeyEvent?(event)
   }
 
+  // Applies configuration specific terminal commands such as switching buffers or hiding the cursor.
   private func enterScreen () {
     do {
       if configuration.usesAlternateBuffer {
@@ -135,6 +147,7 @@ public final class TerminalDriver {
     } catch { }
   }
 
+  // Restores the terminal to its original settings when leaving the UI.
   private func exitScreen () {
     do {
       if configuration.hidesCursor {

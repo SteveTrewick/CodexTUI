@@ -1,5 +1,6 @@
 import Foundation
 
+// Describes a rectangular region within the terminal coordinate space.
 public struct BoxBounds : Equatable {
   public var row    : Int
   public var column : Int
@@ -20,6 +21,7 @@ public struct BoxBounds : Equatable {
 
   public var area : Int { max(0, width * height) }
 
+  // Shrinks the bounds by the provided edge insets while ensuring we never produce negative dimensions.
   public func inset ( by insets: EdgeInsets ) -> BoxBounds {
     let insetRow    = row + insets.top
     let insetColumn = column + insets.leading
@@ -29,6 +31,7 @@ public struct BoxBounds : Equatable {
     return BoxBounds(row: insetRow, column: insetColumn, width: insetWidth, height: insetHeight)
   }
 
+  // Aligns the bounds within a container rect according to the requested horizontal and vertical alignment strategies.
   public func aligned ( horizontal: HorizontalAlignment, vertical: VerticalAlignment, inside container: BoxBounds ) -> BoxBounds {
     let originRow : Int
     let originCol : Int
@@ -49,6 +52,7 @@ public struct BoxBounds : Equatable {
   }
 }
 
+// Insets mirroring SwiftUI's EdgeInsets tailored for integer terminal coordinates.
 public struct EdgeInsets : Equatable {
   public var top      : Int
   public var leading  : Int

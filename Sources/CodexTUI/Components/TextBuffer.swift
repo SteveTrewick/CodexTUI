@@ -1,5 +1,6 @@
 import Foundation
 
+// Scrollable text view that can optionally participate in focus traversal.
 public final class TextBuffer : FocusableWidget {
   public var focusIdentifier : FocusIdentifier
   public var lines           : [String]
@@ -17,6 +18,7 @@ public final class TextBuffer : FocusableWidget {
     self.isInteractive   = isInteractive
   }
 
+  // Exposes the focus metadata the focus chain uses to manage traversal.
   public func focusNode () -> FocusNode {
     return FocusNode(identifier: focusIdentifier, isEnabled: isInteractive, acceptsTab: true)
   }
@@ -25,12 +27,14 @@ public final class TextBuffer : FocusableWidget {
     lines.append(line)
   }
 
+  // Projects the text buffer into the provided bounds respecting scroll offsets and clipping.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let bounds    = context.bounds.inset(by: context.environment.contentInsets)
     let maxLines  = max(0, bounds.height)
     let startLine = max(0, min(lines.count - maxLines, scrollOffset))
     var commands  = [RenderCommand]()
 
+    // Calculate the visible slice of lines then copy characters until we hit the horizontal limit.
     for visibleIndex in 0..<maxLines {
       let lineIndex = startLine + visibleIndex
       guard lineIndex < lines.count else { break }
