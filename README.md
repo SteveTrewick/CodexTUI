@@ -185,6 +185,33 @@ This sample demonstrates:
 - Responding to keyboard events manually, including triggering redraws and graceful shutdown.
 - Keeping the process alive with a `DispatchSemaphore` until the user exits.
 
+## Building and Running CodexTUIDemo
+
+The repository ships with an executable target, `CodexTUIDemo`, that assembles the widgets above into a fully working sample app. You can build and run it directly from the command line:
+
+1. Build the executable (use `-c release` for an optimized binary):
+
+   ```sh
+   swift build --product CodexTUIDemo
+   # or
+   swift build -c release --product CodexTUIDemo
+   ```
+
+2. Launch the demo in a terminal that supports raw keyboard input and ANSI colours:
+
+   ```sh
+   swift run CodexTUIDemo
+   # or run the release binary
+   .build/release/CodexTUIDemo
+   ```
+
+3. Interact with the interface:
+   - Press any key to append log entries to the scroll buffer.
+   - Use the highlighted accelerator keys to activate menu items.
+   - Press `ESC` to exit cleanly.
+
+Running inside a full-featured terminal (Terminal.app, iTerm2, or a modern Linux terminal emulator) ensures the demo can switch the terminal into raw mode, display colours, and respond to window-resize events properly.
+
 ## Documentation & Further Reading
 
 - Explore the [`Sources/CodexTUI`](Sources/CodexTUI) directory for the full set of widgets and layout primitives.
