@@ -10,9 +10,9 @@ build a swift based Terminal User Interface framework.
 - Status Items that can be aligned left or right 
 - Modal Overlays, a selection of modal UI elements including
   - Drop Down Menus with lists of selectable items, activated by RETURN, anchored to their summoning Menu Item
-  - Selection List, like a submenu but with a tiitle and centered by default
-  - Message Box, a pop up message box with a title, message lines and configuarble buttons, buttons are selected with TAB key and activated by RETURN 
-  - Text Entry, a single line text entry box with a title,  customisable buttons selected by TAB activated by RETURN
+  - SelectionList, like a submenu but with a tiitle and centered by default
+  - MessageBox, a pop up message box with a title, message lines and configuarble buttons, buttons are selected with TAB key and activated by RETURN 
+  - TextEntryBox, a single line text entry box with a title,  customisable buttons selected by TAB activated by RETURN
 - All modal overlays should be dismissed without action by ESC
 - Modal overlays should capture the keys they require to function, no other element should recieve keystrokes when a modal is active 
 
