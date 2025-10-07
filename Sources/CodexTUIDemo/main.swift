@@ -77,8 +77,8 @@ final class DemoApplication {
 
     driver = CodexTUI.makeDriver(scene: scene)
 
-    driver.onKeyEvent = { [weak self] event in
-      self?.handle(event: event)
+    driver.onKeyEvent = { [weak self] token in
+      self?.handle(token: token)
     }
   }
 
@@ -95,12 +95,13 @@ final class DemoApplication {
       return
     }
 
-    switch event.key {
+    switch token {
       case .escape        :
         driver.stop()
         waitGroup.signal()
 
-      case .character(let character)           :
+      case .text(let string)                   :
+        guard string.count == 1, let character = string.first else { break }
         logBuffer.append(line: "Key pressed: \(character)")
         driver.redraw()
 

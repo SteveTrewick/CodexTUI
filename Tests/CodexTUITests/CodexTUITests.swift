@@ -99,8 +99,11 @@ final class CodexTUITests: XCTestCase {
 
     let expectation = expectation(description: "Key event delivered without buffering")
 
-    driver.onKeyEvent = { event in
-      XCTAssertEqual(event, KeyEvent(key: .character("a")))
+    driver.onKeyEvent = { token in
+      switch token {
+        case .text(let string) : XCTAssertEqual(string, "a")
+        default                : XCTFail("Unexpected token: \(token)")
+      }
       XCTAssertTrue(mode.isRawModeActive)
       expectation.fulfill()
     }
