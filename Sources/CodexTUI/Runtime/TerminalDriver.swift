@@ -47,6 +47,11 @@ public final class TerminalDriver {
       messageBoxController?.update(viewportBounds: currentBounds)
     }
   }
+  public var selectionListController: SelectionListController? {
+    didSet {
+      selectionListController?.update(viewportBounds: currentBounds)
+    }
+  }
   public var menuController        : MenuController? {
     didSet {
       menuController?.update(viewportBounds: currentBounds)
@@ -146,6 +151,7 @@ public final class TerminalDriver {
     currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
     textEntryBoxController?.update(viewportBounds: currentBounds)
     messageBoxController?.update(viewportBounds: currentBounds)
+    selectionListController?.update(viewportBounds: currentBounds)
     menuController?.update(viewportBounds: currentBounds)
     onResize?(currentBounds)
     redraw()
@@ -214,6 +220,11 @@ public final class TerminalDriver {
       return
     }
     if let controller = messageBoxController, controller.handle(token: token) {
+      redraw()
+      return
+    }
+
+    if let controller = selectionListController, controller.handle(token: token) {
       redraw()
       return
     }
