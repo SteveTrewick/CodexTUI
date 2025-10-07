@@ -1,7 +1,11 @@
 import Foundation
 import TerminalInput
 
+/// Presents `SelectionList` overlays and manages keyboard navigation, focus restoration and theme
+/// customisation. It mirrors the behaviour of `MessageBoxController` but tailored to scrolling lists
+/// of selectable entries.
 public final class SelectionListController {
+  /// Snapshot capturing the entries, selection index and style overrides for the list overlay.
   private struct State {
     var title                 : String
     var entries               : [SelectionListEntry]

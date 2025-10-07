@@ -1,6 +1,8 @@
 import Foundation
 
-// Renders a boxed list of menu entries and highlights the focused row.
+/// Widget that shows a menu item's submenu as a boxed list. It is effectively a specialised
+/// wrapper around `SelectionListSurface` that converts the menu entries into selection entries and
+/// exposes a simplified API tailored for menu interactions.
 public struct DropDownMenu : Widget {
   public var entries        : [MenuItem.Entry]
   public var selectionIndex : Int
@@ -16,6 +18,10 @@ public struct DropDownMenu : Widget {
     self.borderStyle    = borderStyle
   }
 
+  /// Delegates to `SelectionListSurface.layout` after converting the menu entries into the common
+  /// selection list representation. The resulting layout mirrors the behaviour of the standalone
+  /// selection list widget so the menu system benefits from the same scrolling, highlighting and
+  /// border logic without duplicating calculations.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let listEntries = entries.map { SelectionListEntry(menuEntry: $0) }
     let surface     = SelectionListSurface.layout(

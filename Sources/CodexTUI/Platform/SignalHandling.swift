@@ -7,7 +7,8 @@ import Glibc
 import Darwin
 #endif
 
-// Thin wrapper around DispatchSourceSignal that hides platform conditional imports.
+/// Thin wrapper around `DispatchSourceSignal` that hides platform conditional imports and exposes a
+/// simple API for listening to terminal resize notifications.
 public final class SignalObserver {
   public typealias Handler = () -> Void
 
@@ -23,12 +24,14 @@ public final class SignalObserver {
     self.handlerQueue    = handlerQueue
   }
 
+  /// Registers the closure that should run when the monitored signal fires.
   public func setHandler ( _ handler: @escaping Handler ) {
     self.handler = handler
   }
 
   
-  // Begins listening for the configured signal and forwards notifications to the handler.
+  /// Begins listening for the configured signal and forwards notifications to the handler queue when
+  /// events arrive. Subsequent calls are ignored while the observer is active.
   public func start () {
     
     guard source == nil else { return }
@@ -46,7 +49,8 @@ public final class SignalObserver {
     self.source = source
   }
 
-  // Cancels the dispatch source and releases the handler closure.
+  /// Cancels the dispatch source and releases the handler closure to avoid retain cycles. Safe to call
+  /// multiple times.
   public func stop () {
     source?.cancel()
     source = nil

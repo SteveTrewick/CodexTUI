@@ -1,6 +1,8 @@
 import Foundation
 
-// Scrollable text view that can optionally participate in focus traversal.
+/// Scrollable text view that optionally participates in focus traversal. The buffer stores rendered
+/// lines and exposes a layout routine that clips and offsets the visible region to simulate scrolling
+/// without mutating the underlying content.
 public final class TextBuffer : FocusableWidget {
   public var focusIdentifier : FocusIdentifier
   public var lines           : [String]
@@ -28,7 +30,11 @@ public final class TextBuffer : FocusableWidget {
     scrollOffset  = max(0, lines.count - 1)
   }
 
-  // Projects the text buffer into the provided bounds respecting scroll offsets and clipping.
+  /// Renders the text buffer into the supplied bounds. The layout routine first applies any content
+  /// insets from the environment to determine the drawable interior, then clamps the scroll offset so
+  /// we never read past the buffer. It walks the visible slice of lines, emitting commands for each
+  /// character until the horizontal limit is reached, which mirrors how a terminal would clip output
+  /// in hardware.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let bounds    = context.bounds.inset(by: context.environment.contentInsets)
     let maxLines  = max(0, bounds.height)

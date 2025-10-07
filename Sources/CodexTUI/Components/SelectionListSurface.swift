@@ -1,5 +1,8 @@
 import Foundation
 
+/// Model representing a single selectable row displayed by the selection list surface. Entries
+/// capture the text, optional accelerator hint and an activation handler so callers can respond to
+/// user input without holding additional state.
 public struct SelectionListEntry {
   public var title           : String
   public var acceleratorHint : String?
@@ -12,6 +15,9 @@ public struct SelectionListEntry {
   }
 }
 
+/// Encapsulates the layout result produced by `SelectionListSurface`. The structure packages both
+/// the widget layout result and the calculated interior bounds that children such as headers may
+/// render into.
 public struct SelectionListSurfaceLayout {
   public var result   : WidgetLayoutResult
   public var interior : BoxBounds
@@ -22,7 +28,18 @@ public struct SelectionListSurfaceLayout {
   }
 }
 
+/// Shared rendering implementation used by selection lists and dropdown menus. It applies a box
+/// border, paints background fills for each row and emits commands for the item text and optional
+/// accelerator hints. The enum namespace keeps the helpers grouped without requiring instantiation.
 public enum SelectionListSurface {
+  /// Lays out the selection list within the supplied context. The routine first delegates to the
+  /// `Box` widget to draw the surrounding border, capturing its commands and any child layouts. It
+  /// then shrinks the interior by one character on each edge to account for the border thickness and
+  /// determines how many rows remain after optionally reserving header lines. For each visible entry
+  /// it fills the row with the appropriate background colour, writes the title characters until the
+  /// horizontal bound is reached and finally right-aligns accelerator hints by walking backwards from
+  /// the edge. The control flow is organised into short guarded sections so we can early-out when the
+  /// available area is exhausted, guaranteeing that downstream renderers never see negative geometry.
   public static func layout (
     entries        : [SelectionListEntry],
     selectionIndex : Int,
@@ -135,6 +152,9 @@ public enum SelectionListSurface {
     return SelectionListSurfaceLayout(result: result, interior: interior)
   }
 
+  /// Computes the preferred width and height for a list of entries when rendered within the
+  /// selection list surface. The calculation mirrors the layout routine by accounting for border
+  /// thickness and optional headers so callers can perform their own placement heuristics.
   public static func preferredSize (
     for entries   : [SelectionListEntry],
     preferredContentWidth : Int? = nil,
@@ -158,6 +178,11 @@ public enum SelectionListSurface {
     return maxTitle + maxHint + hintGap
   }
 
+  /// Determines bounds for a dropdown anchored to a menu item while keeping the menu within the
+  /// container. The function first clamps the preferred size to the container and then attempts to
+  /// position the list below the triggering item, flipping above when it would overflow the bottom
+  /// edge. Horizontal positioning keeps the left edge aligned unless the container would overflow,
+  /// in which case it slides the menu back into view.
   public static func anchoredBounds (
     for entries : [SelectionListEntry],
     anchoredTo itemBounds: BoxBounds,

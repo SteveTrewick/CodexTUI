@@ -1,11 +1,13 @@
 import Foundation
 
+/// Alignment strategy controlling where a status bar item is rendered. Leading items expand from the
+/// left edge while trailing items pack tightly against the right edge.
 public enum StatusItemAlignment {
   case leading
   case trailing
 }
 
-// Simple descriptor used to render text segments inside the status bar.
+/// Describes a single textual segment in the status bar along with its alignment policy.
 public struct StatusItem : Equatable {
   public var text      : String
   public var alignment : StatusItemAlignment
@@ -16,7 +18,8 @@ public struct StatusItem : Equatable {
   }
 }
 
-// Renders a single line status bar with left/right aligned segments.
+/// Widget that renders a single-line status bar with left and right aligned segments. The
+/// implementation mirrors the menu bar so menus and status bars feel visually consistent.
 public struct StatusBar : Widget {
   public var items : [StatusItem]
   public var style : ColorPair
@@ -26,6 +29,10 @@ public struct StatusBar : Widget {
     self.style = style
   }
 
+  /// Renders the status bar along the bottom edge of the provided bounds. The function first clears
+  /// the row with the default style, then streams leading items from the left and trailing items from
+  /// the right, adjusting cursors as it goes. Processing the trailing items in reverse ensures their
+  /// text never overlaps despite not precomputing widths up front.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let row          = context.bounds.maxRow
     let startColumn  = context.bounds.column

@@ -1,6 +1,7 @@
 import Foundation
 
-// Minimal widget that renders an immutable string starting at a fixed origin.
+/// Minimal widget that renders an immutable string starting at a fixed origin. It is typically used
+/// for labels inside other composite widgets.
 public struct Text : Widget {
   public var content : String
   public var origin  : (row: Int, column: Int)
@@ -12,6 +13,9 @@ public struct Text : Widget {
     self.style    = style
   }
 
+  /// Emits a render command for each character in the string. The bounds are derived from the
+  /// configured origin and the string length so parent widgets can include the text when computing
+  /// their own sizes or hit testing logic.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let bounds = BoxBounds(row: origin.row, column: origin.column, width: content.count, height: 1)
     var commands = [RenderCommand]()

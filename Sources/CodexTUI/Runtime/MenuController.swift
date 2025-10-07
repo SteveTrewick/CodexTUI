@@ -1,7 +1,9 @@
 import Foundation
 import TerminalInput
 
-// Coordinates menu state, overlays and keyboard routing for menu bars.
+/// Coordinates menu state, overlays and keyboard routing for menu bars. The controller owns the
+/// currently visible scaffold and swaps overlays as menus open or close so the scene always reflects
+/// the latest interaction state.
 public final class MenuController {
   public private(set) var scene              : Scene
   public private(set) var activeOverlayBounds: BoxBounds?
