@@ -301,6 +301,10 @@ final class CodexTUITests: XCTestCase {
     XCTAssertTrue(controller.handle(token: .cursor(.right)))
     XCTAssertEqual(controller.caretIndex, 1)
 
+    XCTAssertTrue(controller.handle(token: .control(.DEL)))
+    XCTAssertEqual(controller.currentText, "")
+    XCTAssertEqual(controller.caretIndex, 0)
+
     XCTAssertTrue(controller.handle(token: .control(.TAB)))
     XCTAssertEqual(controller.activeButton, 1)
 
@@ -308,7 +312,7 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(controller.activeButton, 0)
 
     XCTAssertTrue(controller.handle(token: .control(.RETURN)))
-    XCTAssertEqual(capturedText, "b")
+    XCTAssertEqual(capturedText, "")
     XCTAssertFalse(controller.isPresenting)
     XCTAssertEqual(scene.overlays.count, initialOverlays.count)
     XCTAssertEqual(scene.focusChain.active, initialFocus)
