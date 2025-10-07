@@ -205,6 +205,7 @@ final class CodexTUITests: XCTestCase {
       buttons           : buttons,
       activeButtonIndex : 0,
       titleStyle        : theme.highlight,
+      promptStyle       : theme.contentDefault,
       contentStyle      : theme.contentDefault,
       fieldStyle        : theme.contentDefault,
       caretStyle        : theme.highlight,
@@ -411,6 +412,18 @@ final class CodexTUITests: XCTestCase {
     let renderedEntryTitle = String(entryTitleCommands.map { $0.tile.character })
     XCTAssertEqual(renderedEntryTitle, "Input")
 
+    let promptRow      = min(titleRow + 1, interior.maxRow)
+    let promptCommands = overlayCommands.filter { command in
+      return command.row == promptRow && command.column >= interior.column && command.column <= interior.maxCol
+    }
+
+    let entryPromptCommands = promptCommands.filter { $0.tile.attributes == theme.contentDefault }.sorted { $0.column < $1.column }
+
+    XCTAssertFalse(entryPromptCommands.isEmpty)
+    let promptCharacters    = entryPromptCommands.map { $0.tile.character }
+    let renderedEntryPrompt = String(promptCharacters.filter { $0 != " " })
+    XCTAssertEqual(renderedEntryPrompt, "Name")
+
     XCTAssertTrue(controller.handle(token: .text("ab")))
     XCTAssertEqual(controller.currentText, "ab")
     XCTAssertEqual(controller.caretIndex, 2)
@@ -449,7 +462,7 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
   }
 
-  func testTextEntryBoxControllerDefaultsAndOverridesButtonStyle () {
+  func testTextEntryBoxControllerDefaultsAndOverridesStyles () {
     let theme      = Theme.codex
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
     let focusChain = FocusChain()
@@ -481,11 +494,35 @@ final class CodexTUITests: XCTestCase {
     XCTAssertNotNil(defaultStyleCommand)
     XCTAssertNotNil(highlightCommand)
 
+    let titleRow           = interior.row
+    let titleCommands      = overlayCommands.filter { $0.row == titleRow }
+    var expectedTitleStyle = theme.contentDefault
+    expectedTitleStyle.style.insert(.bold)
+    let defaultTitleCommand = titleCommands.first { $0.tile.attributes == expectedTitleStyle }
+
+    XCTAssertNotNil(defaultTitleCommand)
+
+    let promptRow            = min(titleRow + 1, interior.maxRow)
+    let promptCommands       = overlayCommands.filter { $0.row == promptRow }
+    let defaultPromptCommand = promptCommands.first { $0.tile.attributes == theme.contentDefault }
+
+    XCTAssertNotNil(defaultPromptCommand)
+
     controller.dismiss()
 
-    let overrideStyle = ColorPair(foreground: .red, background: .black)
+    let overrideButtonStyle = ColorPair(foreground: .red, background: .black)
+    let overrideTitleStyle  = ColorPair(foreground: .yellow, background: .blue)
+    let overridePromptStyle = ColorPair(foreground: .cyan, background: .magenta)
 
-    controller.present(title: "Input", prompt: "Name", text: "", buttons: buttons, buttonStyleOverride: overrideStyle)
+    controller.present(
+      title               : "Input",
+      prompt              : "Name",
+      text                : "",
+      buttons             : buttons,
+      titleStyleOverride  : overrideTitleStyle,
+      promptStyleOverride : overridePromptStyle,
+      buttonStyleOverride : overrideButtonStyle
+    )
 
     guard let overrideBounds = controller.currentBounds else {
       XCTFail("Expected text entry box bounds to be available")
@@ -498,11 +535,23 @@ final class CodexTUITests: XCTestCase {
     let overrideInterior        = overrideBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
     let overrideButtonRow       = overrideInterior.maxRow
     let overrideButtonCommands  = overrideCommands.filter { $0.row == overrideButtonRow }
-    let overrideStyleCommand    = overrideButtonCommands.first { $0.tile.attributes == overrideStyle }
+    let overrideStyleCommand    = overrideButtonCommands.first { $0.tile.attributes == overrideButtonStyle }
     let overrideHighlight       = overrideButtonCommands.first { $0.tile.attributes == theme.highlight }
 
     XCTAssertNotNil(overrideStyleCommand)
     XCTAssertNotNil(overrideHighlight)
+
+    let overrideTitleRow        = overrideInterior.row
+    let overrideTitleCommands   = overrideCommands.filter { $0.row == overrideTitleRow }
+    let overrideTitleCommand    = overrideTitleCommands.first { $0.tile.attributes == overrideTitleStyle }
+
+    XCTAssertNotNil(overrideTitleCommand)
+
+    let overridePromptRow       = min(overrideTitleRow + 1, overrideInterior.maxRow)
+    let overridePromptCommands  = overrideCommands.filter { $0.row == overridePromptRow }
+    let overridePromptCommand   = overridePromptCommands.first { $0.tile.attributes == overridePromptStyle }
+
+    XCTAssertNotNil(overridePromptCommand)
   }
 
   func testTextEntryBoxControllerRespectsStartWidth () {
