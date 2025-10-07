@@ -289,6 +289,62 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
   }
 
+  func testMessageBoxControllerDefaultsAndOverridesButtonStyle () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let controller = MessageBoxController(scene: scene, viewportBounds: viewport)
+    let buttons    = [
+      MessageBoxButton(text: "OK"),
+      MessageBoxButton(text: "Cancel")
+    ]
+
+    controller.present(title: "Notice", messageLines: ["Testing"], buttons: buttons)
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected message box bounds to be available")
+      return
+    }
+
+    let context             = scene.layoutContext(for: viewport)
+    let overlayLayout       = scene.overlays.last!.layout(in: context)
+    let overlayCommands     = overlayLayout.flattenedCommands()
+    let interior            = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let buttonRow           = interior.maxRow
+    let buttonRowCommands   = overlayCommands.filter { $0.row == buttonRow }
+    let defaultStyleCommand = buttonRowCommands.first { $0.tile.attributes == theme.menuBar }
+    let highlightCommand    = buttonRowCommands.first { $0.tile.attributes == theme.highlight }
+
+    XCTAssertNotNil(defaultStyleCommand)
+    XCTAssertNotNil(highlightCommand)
+
+    controller.dismiss()
+
+    let overrideStyle = ColorPair(foreground: .red, background: .black)
+
+    controller.present(title: "Notice", messageLines: ["Testing"], buttons: buttons, buttonStyleOverride: overrideStyle)
+
+    guard let overrideBounds = controller.currentBounds else {
+      XCTFail("Expected message box bounds to be available")
+      return
+    }
+
+    let overrideContext         = scene.layoutContext(for: viewport)
+    let overrideLayout          = scene.overlays.last!.layout(in: overrideContext)
+    let overrideCommands        = overrideLayout.flattenedCommands()
+    let overrideInterior        = overrideBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let overrideButtonRow       = overrideInterior.maxRow
+    let overrideButtonCommands  = overrideCommands.filter { $0.row == overrideButtonRow }
+    let overrideStyleCommand    = overrideButtonCommands.first { $0.tile.attributes == overrideStyle }
+    let overrideHighlight       = overrideButtonCommands.first { $0.tile.attributes == theme.highlight }
+
+    XCTAssertNotNil(overrideStyleCommand)
+    XCTAssertNotNil(overrideHighlight)
+  }
+
   func testTextEntryBoxControllerHandlesInputAndDismissal () {
     let theme      = Theme.codex
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
@@ -371,6 +427,62 @@ final class CodexTUITests: XCTestCase {
     XCTAssertFalse(controller.isPresenting)
     XCTAssertEqual(scene.overlays.count, initialOverlays.count)
     XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
+
+  func testTextEntryBoxControllerDefaultsAndOverridesButtonStyle () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let controller = TextEntryBoxController(scene: scene, viewportBounds: viewport)
+    let buttons    = [
+      TextEntryBoxButton(text: "Save"),
+      TextEntryBoxButton(text: "Cancel")
+    ]
+
+    controller.present(title: "Input", prompt: "Name", text: "", buttons: buttons)
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected text entry box bounds to be available")
+      return
+    }
+
+    let context             = scene.layoutContext(for: viewport)
+    let overlayLayout       = scene.overlays.last!.layout(in: context)
+    let overlayCommands     = overlayLayout.flattenedCommands()
+    let interior            = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let buttonRow           = interior.maxRow
+    let buttonRowCommands   = overlayCommands.filter { $0.row == buttonRow }
+    let defaultStyleCommand = buttonRowCommands.first { $0.tile.attributes == theme.menuBar }
+    let highlightCommand    = buttonRowCommands.first { $0.tile.attributes == theme.highlight }
+
+    XCTAssertNotNil(defaultStyleCommand)
+    XCTAssertNotNil(highlightCommand)
+
+    controller.dismiss()
+
+    let overrideStyle = ColorPair(foreground: .red, background: .black)
+
+    controller.present(title: "Input", prompt: "Name", text: "", buttons: buttons, buttonStyleOverride: overrideStyle)
+
+    guard let overrideBounds = controller.currentBounds else {
+      XCTFail("Expected text entry box bounds to be available")
+      return
+    }
+
+    let overrideContext         = scene.layoutContext(for: viewport)
+    let overrideLayout          = scene.overlays.last!.layout(in: overrideContext)
+    let overrideCommands        = overrideLayout.flattenedCommands()
+    let overrideInterior        = overrideBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let overrideButtonRow       = overrideInterior.maxRow
+    let overrideButtonCommands  = overrideCommands.filter { $0.row == overrideButtonRow }
+    let overrideStyleCommand    = overrideButtonCommands.first { $0.tile.attributes == overrideStyle }
+    let overrideHighlight       = overrideButtonCommands.first { $0.tile.attributes == theme.highlight }
+
+    XCTAssertNotNil(overrideStyleCommand)
+    XCTAssertNotNil(overrideHighlight)
   }
 
   func testTextEntryBoxControllerRespectsStartWidth () {

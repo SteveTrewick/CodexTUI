@@ -3,12 +3,13 @@ import TerminalInput
 
 public final class TextEntryBoxController {
   private struct State {
-    var title        : String
-    var prompt       : String?
-    var buttons      : [TextEntryBoxButton]
-    var activeIndex  : Int
-    var text         : String
-    var caret        : Int
+    var title               : String
+    var prompt              : String?
+    var buttons             : [TextEntryBoxButton]
+    var activeIndex         : Int
+    var text                : String
+    var caret               : Int
+    var buttonStyleOverride : ColorPair?
   }
 
   public private(set) var scene         : Scene
@@ -38,7 +39,13 @@ public final class TextEntryBoxController {
     self.caretIndex     = 0
   }
 
-  public func present ( title: String, prompt: String? = nil, text: String = "", buttons: [TextEntryBoxButton] ) {
+  public func present (
+    title: String,
+    prompt: String? = nil,
+    text: String = "",
+    buttons: [TextEntryBoxButton],
+    buttonStyleOverride: ColorPair? = nil
+  ) {
     guard buttons.isEmpty == false else { return }
 
     if storedOverlays == nil {
@@ -47,7 +54,15 @@ public final class TextEntryBoxController {
 
     previousFocus = scene.focusChain.active
 
-    let newState = State(title: title, prompt: prompt, buttons: buttons, activeIndex: 0, text: text, caret: text.count)
+    let newState = State(
+      title             : title,
+      prompt            : prompt,
+      buttons           : buttons,
+      activeIndex       : 0,
+      text              : text,
+      caret             : text.count,
+      buttonStyleOverride: buttonStyleOverride
+    )
     presentState(newState)
   }
 
@@ -165,9 +180,10 @@ public final class TextEntryBoxController {
 
     state.caret = max(0, min(state.caret, state.text.count))
 
-    let bounds     = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
-    let theme      = scene.configuration.theme
-    var titleStyle = theme.contentDefault
+    let bounds       = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
+    let theme        = scene.configuration.theme
+    let buttonStyle  = state.buttonStyleOverride ?? theme.menuBar
+    var titleStyle   = theme.contentDefault
     titleStyle.style.insert(.bold)
     let widget = TextEntryBox(
       title             : state.title,
@@ -180,7 +196,7 @@ public final class TextEntryBoxController {
       contentStyle      : theme.contentDefault,
       fieldStyle        : theme.contentDefault,
       caretStyle        : theme.highlight,
-      buttonStyle       : theme.dimHighlight,
+      buttonStyle       : buttonStyle,
       highlightStyle    : theme.highlight,
       borderStyle       : theme.windowChrome
     )
@@ -195,7 +211,15 @@ public final class TextEntryBoxController {
     activeButton   = state.activeIndex
     currentText    = state.text
     caretIndex     = state.caret
-    self.state     = State(title: state.title, prompt: state.prompt, buttons: state.buttons, activeIndex: state.activeIndex, text: state.text, caret: state.caret)
+    self.state     = State(
+      title             : state.title,
+      prompt            : state.prompt,
+      buttons           : state.buttons,
+      activeIndex       : state.activeIndex,
+      text              : state.text,
+      caret             : state.caret,
+      buttonStyleOverride: state.buttonStyleOverride
+    )
     isPresenting   = true
   }
 
