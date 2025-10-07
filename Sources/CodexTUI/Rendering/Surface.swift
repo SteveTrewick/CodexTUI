@@ -131,13 +131,22 @@ public enum SurfaceRenderer {
     for change in changes {
       sequences.append(TerminalOutput.TerminalCommands.moveCursor(row: change.row, column: change.column))
 
-      if let sequence = change.tile.attributes.style.openingSequence(foreground: change.tile.attributes.foreground, background: change.tile.attributes.background) {
+      let attributes          = change.tile.attributes
+      let isDefaultAppearance = attributes.foreground == nil && attributes.background == nil && attributes.style == .none
+
+      if isDefaultAppearance {
+        sequences.append(TerminalOutput.TextStyle.resetSequence())
+        sequences.append(AnsiSequence(rawValue: String(change.tile.character)))
+        continue
+      }
+
+      if let sequence = attributes.style.openingSequence(foreground: attributes.foreground, background: attributes.background) {
         sequences.append(sequence)
       }
 
       sequences.append(AnsiSequence(rawValue: String(change.tile.character)))
 
-      if change.tile.attributes.style.requiresReset {
+      if attributes.style.requiresReset {
         sequences.append(TerminalOutput.TextStyle.resetSequence())
       }
     }
