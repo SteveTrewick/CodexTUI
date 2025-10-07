@@ -27,18 +27,20 @@ public final class SignalObserver {
     self.handler = handler
   }
 
+  
   // Begins listening for the configured signal and forwards notifications to the handler.
   public func start () {
+    
     guard source == nil else { return }
 
     let source = DispatchSource.makeSignalSource(signal: monitoredSignal, queue: signalQueue)
+    
     source.setEventHandler { [weak self] in
-      guard let self     = self else { return }
-      guard let handler  = self.handler else { return }
-      self.handlerQueue.async {
-        handler()
+      self?.handlerQueue.async {
+        self?.handler?()
       }
     }
+    
     source.resume()
 
     self.source = source
