@@ -16,36 +16,25 @@ public struct MenuActivationKey : Equatable {
   }
 
   public func matches ( event: KeyEvent ) -> Bool {
-    if event.key == key && event.modifiers == modifiers {
-      return true
+    
+    switch event.key {
+      case .meta (let char):
+        if modifiers.contains(.option) && key == Key.character(char) { return true }
+      
+    default : return false
     }
-
-    guard modifiers == event.modifiers else { return false }
-
-    guard modifiers.contains(.option) else { return false }
-
-    guard case .character(let activationCharacter) = key else { return false }
-
-    guard case .meta(let metaKey) = event.key else { return false }
-
-    guard let character = metaKey.acceleratorCharacter else { return false }
-
-    return character == activationCharacter
+    return false
   }
 }
 
-private extension TerminalInput.MetaKey {
-  var acceleratorCharacter : Character? {
-    switch self {
-      case .alt(let character):
-        return character
-
-      default:
-        guard let child = Mirror(reflecting: self).children.first else { return nil }
-        return child.value as? Character
-    }
-  }
-}
+//// TODO: because we wrap the token in a KeyEvent we end up doing this, which is nasty and only compiles because we have just one case
+//private extension TerminalInput.MetaKey {
+//  var character : Character {
+//    switch self {
+//      case .alt(let char): return char
+//    }
+//  }
+//}
 
 // Describes a single interactive item within the menu bar.
 public struct MenuItem : Equatable {
