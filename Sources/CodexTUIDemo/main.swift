@@ -190,7 +190,9 @@ final class DemoApplication {
         "Navigate menus with arrows and Return."
       ],
       buttons     : [
-        MessageBoxButton(text: "OK")
+        MessageBoxButton(text: "OK"),
+        MessageBoxButton(text: "NO")
+        
       ]
     )
   }
