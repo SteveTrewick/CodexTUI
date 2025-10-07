@@ -178,10 +178,16 @@ final class CodexTUITests: XCTestCase {
     let layout      = messageBox.layout(in: context)
     let commands    = layout.flattenedCommands()
     let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
-    let firstRow    = interior.row
-    let secondRow   = min(firstRow + 1, interior.maxRow)
-    let firstLine   = commands.filter { $0.row == firstRow && $0.tile.attributes == overridePair }
-    let secondLine  = commands.filter { $0.row == secondRow && $0.tile.attributes == theme.contentDefault }
+
+    guard let contentInterior = messageContentInterior(for: interior, title: messageBox.title, hasButtons: messageBox.buttons.isEmpty == false) else {
+      XCTFail("Expected content interior to be available")
+      return
+    }
+
+    let firstRow   = contentInterior.row
+    let secondRow  = min(firstRow + 1, contentInterior.maxRow)
+    let firstLine  = commands.filter { $0.row == firstRow && $0.tile.attributes == overridePair }
+    let secondLine = commands.filter { $0.row == secondRow && $0.tile.attributes == theme.contentDefault }
 
     XCTAssertFalse(firstLine.isEmpty)
     XCTAssertFalse(secondLine.isEmpty)
@@ -403,13 +409,16 @@ final class CodexTUITests: XCTestCase {
     let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
     let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
     let controller = MessageBoxController(scene: scene, viewportBounds: viewport)
+    let title      = "Styled"
+    let message    = ["Custom", "Default"]
+    let buttons    = [MessageBoxButton(text: "OK")]
     let titleStyle = ColorPair(foreground: .cyan, background: .black)
     let lineStyle  = ColorPair(foreground: .magenta, background: .black)
 
     controller.present(
-      title                : "Styled",
-      messageLines         : ["Custom", "Default"],
-      buttons              : [MessageBoxButton(text: "OK")],
+      title                : title,
+      messageLines         : message,
+      buttons              : buttons,
       titleStyleOverride   : titleStyle,
       messageStyleOverrides: [lineStyle, nil]
     )
@@ -423,9 +432,15 @@ final class CodexTUITests: XCTestCase {
     let overlayLayout  = scene.overlays.last!.layout(in: context)
     let overlayCommands = overlayLayout.flattenedCommands()
     let interior       = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
-    let titleRow       = interior.row
-    let messageRow     = min(titleRow + 1, interior.maxRow)
-    let secondRow      = min(messageRow + 1, interior.maxRow)
+
+    guard let contentInterior = messageContentInterior(for: interior, title: title, hasButtons: buttons.isEmpty == false) else {
+      XCTFail("Expected content interior to be available")
+      return
+    }
+
+    let titleRow   = interior.row
+    let messageRow = contentInterior.row
+    let secondRow  = min(messageRow + 1, contentInterior.maxRow)
 
     let titleCommands = overlayCommands.filter { $0.row == titleRow && $0.tile.attributes == titleStyle }
     XCTAssertFalse(titleCommands.isEmpty)
@@ -766,6 +781,19 @@ final class CodexTUITests: XCTestCase {
     XCTAssertTrue(controller.handle(token: .escape))
     XCTAssertTrue(scene.overlays.isEmpty)
     XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
+
+  private func messageContentInterior ( for interior: BoxBounds, title: String, hasButtons: Bool ) -> BoxBounds? {
+    let contentTop    = title.isEmpty ? interior.row : interior.row + 1
+    let clampedTop    = min(contentTop, interior.maxRow)
+    let contentBottom = hasButtons ? min(interior.maxRow, interior.maxRow - 1) : interior.maxRow
+    let contentHeight = contentBottom - clampedTop + 1
+    guard contentHeight > 0 else { return nil }
+
+    let contentBounds   = BoxBounds(row: clampedTop, column: interior.column, width: interior.width, height: contentHeight)
+    let contentInterior = contentBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    guard contentInterior.width > 0 && contentInterior.height > 0 else { return nil }
+    return contentInterior
   }
 }
 

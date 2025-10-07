@@ -61,26 +61,42 @@ public struct MessageBox : Widget {
       highlightStyle   : highlightStyle
     )
 
-    var commands = surface.result.commands
-    let children = surface.result.children
-    let interior = surface.interior
+    var commands  = surface.result.commands
+    let children  = surface.result.children
+    let interior  = surface.interior
+    let buttonRow = surface.buttonRow ?? interior.maxRow
 
     if interior.width <= 0 || interior.height <= 0 {
       return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
     }
 
-    var currentRow = interior.row
-
     if title.isEmpty == false {
-      renderCentered(text: title, row: currentRow, bounds: interior, style: titleStyle, commands: &commands)
-      currentRow = min(currentRow + 1, interior.maxRow)
+      renderCentered(text: title, row: interior.row, bounds: interior, style: titleStyle, commands: &commands)
     }
 
-    for (index, line) in messageLines.enumerated() {
-      guard currentRow <= interior.maxRow else { break }
-      let style = styleForMessageLine(at: index)
-      renderCentered(text: line, row: currentRow, bounds: interior, style: style, commands: &commands)
-      currentRow += 1
+    let contentTop    = title.isEmpty ? interior.row : interior.row + 1
+    let clampedTop    = min(contentTop, interior.maxRow)
+    let contentBottom = buttons.isEmpty ? interior.maxRow : min(interior.maxRow, buttonRow - 1)
+    let contentHeight = contentBottom - clampedTop + 1
+
+    if contentHeight > 0 && interior.width > 0 {
+      let contentBounds   = BoxBounds(row: clampedTop, column: interior.column, width: interior.width, height: contentHeight)
+      let contentInterior = contentBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+
+      if contentInterior.height > 0 && contentInterior.width > 0 {
+        let contentBox      = Box(bounds: contentBounds, style: borderStyle)
+        let contentCommands = contentBox.layout(in: context).commands
+        commands.append(contentsOf: contentCommands)
+
+        var currentRow = contentInterior.row
+
+        for (index, line) in messageLines.enumerated() {
+          guard currentRow <= contentInterior.maxRow else { break }
+          let style = styleForMessageLine(at: index)
+          renderCentered(text: line, row: currentRow, bounds: contentInterior, style: style, commands: &commands)
+          currentRow += 1
+        }
+      }
     }
 
     return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
@@ -116,10 +132,11 @@ public struct MessageBox : Widget {
 public extension MessageBox {
   static func preferredSize ( title: String, messageLines: [String], buttons: [MessageBoxButton] ) -> (width: Int, height: Int) {
     let contentWidths = [title.count] + messageLines.map { $0.count }
-    let maxContent    = contentWidths.max() ?? 0
+    let maxContent    = (contentWidths.max() ?? 0) + 2
     var contentHeight = 0
     if title.isEmpty == false { contentHeight += 1 }
     contentHeight += messageLines.count
+    contentHeight += 2
 
     return ModalDialogSurface.preferredSize(
       contentWidth : maxContent,
@@ -130,10 +147,11 @@ public extension MessageBox {
 
   static func centeredBounds ( title: String, messageLines: [String], buttons: [MessageBoxButton], in container: BoxBounds ) -> BoxBounds {
     let contentWidths = [title.count] + messageLines.map { $0.count }
-    let maxContent    = contentWidths.max() ?? 0
+    let maxContent    = (contentWidths.max() ?? 0) + 2
     var contentHeight = 0
     if title.isEmpty == false { contentHeight += 1 }
     contentHeight += messageLines.count
+    contentHeight += 2
 
     return ModalDialogSurface.centeredBounds(
       contentWidth : maxContent,
