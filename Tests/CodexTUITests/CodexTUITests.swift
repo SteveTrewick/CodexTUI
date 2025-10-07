@@ -49,12 +49,14 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testMenuItemMatchesPrintableAccelerator () {
-    let accelerator = MenuActivationKey(key: .character("f"), modifiers: [.option])
-    let item        = MenuItem(title: "File", activationKey: accelerator)
-    let matching    = KeyEvent(key: .character("f"), modifiers: [.option])
-    let nonMatching = KeyEvent(key: .character("f"))
+    let accelerator  = MenuActivationKey(key: .character("f"), modifiers: [.option])
+    let item         = MenuItem(title: "File", activationKey: accelerator)
+    let matching     = KeyEvent(key: .character("f"), modifiers: [.option])
+    let metaMatching = KeyEvent(key: .meta(.alt("f")), modifiers: [.option])
+    let nonMatching  = KeyEvent(key: .character("f"))
 
     XCTAssertTrue(item.matches(event: matching))
+    XCTAssertTrue(item.matches(event: metaMatching))
     XCTAssertFalse(item.matches(event: nonMatching))
   }
 

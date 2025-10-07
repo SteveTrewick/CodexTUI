@@ -1,4 +1,5 @@
 import Foundation
+import TerminalInput
 
 public enum MenuItemAlignment {
   case leading
@@ -15,7 +16,34 @@ public struct MenuActivationKey : Equatable {
   }
 
   public func matches ( event: KeyEvent ) -> Bool {
-    return event.key == key && event.modifiers == modifiers
+    if event.key == key && event.modifiers == modifiers {
+      return true
+    }
+
+    guard modifiers == event.modifiers else { return false }
+
+    guard modifiers.contains(.option) else { return false }
+
+    guard case .character(let activationCharacter) = key else { return false }
+
+    guard case .meta(let metaKey) = event.key else { return false }
+
+    guard let character = metaKey.acceleratorCharacter else { return false }
+
+    return character == activationCharacter
+  }
+}
+
+private extension TerminalInput.MetaKey {
+  var acceleratorCharacter : Character? {
+    switch self {
+      case .alt(let character):
+        return character
+
+      default:
+        guard let child = Mirror(reflecting: self).children.first else { return nil }
+        return child.value as? Character
+    }
   }
 }
 
