@@ -9,6 +9,8 @@ public final class TextEntryBoxController {
     var activeIndex         : Int
     var text                : String
     var caret               : Int
+    var titleStyleOverride  : ColorPair?
+    var promptStyleOverride : ColorPair?
     var buttonStyleOverride : ColorPair?
   }
 
@@ -44,6 +46,8 @@ public final class TextEntryBoxController {
     prompt: String? = nil,
     text: String = "",
     buttons: [TextEntryBoxButton],
+    titleStyleOverride: ColorPair? = nil,
+    promptStyleOverride: ColorPair? = nil,
     buttonStyleOverride: ColorPair? = nil
   ) {
     guard buttons.isEmpty == false else { return }
@@ -61,6 +65,8 @@ public final class TextEntryBoxController {
       activeIndex       : 0,
       text              : text,
       caret             : text.count,
+      titleStyleOverride : titleStyleOverride,
+      promptStyleOverride: promptStyleOverride,
       buttonStyleOverride: buttonStyleOverride
     )
     presentState(newState)
@@ -183,8 +189,15 @@ public final class TextEntryBoxController {
     let bounds       = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
     let theme        = scene.configuration.theme
     let buttonStyle  = state.buttonStyleOverride ?? theme.menuBar
-    var titleStyle   = theme.contentDefault
-    titleStyle.style.insert(.bold)
+    let titleStyle   : ColorPair
+    if let override = state.titleStyleOverride {
+      titleStyle = override
+    } else {
+      var defaultTitle = theme.contentDefault
+      defaultTitle.style.insert(.bold)
+      titleStyle = defaultTitle
+    }
+    let promptStyle  = state.promptStyleOverride ?? theme.contentDefault
     let widget = TextEntryBox(
       title             : state.title,
       prompt            : state.prompt,
@@ -193,6 +206,7 @@ public final class TextEntryBoxController {
       buttons           : state.buttons,
       activeButtonIndex : state.activeIndex,
       titleStyle        : titleStyle,
+      promptStyle       : promptStyle,
       contentStyle      : theme.contentDefault,
       fieldStyle        : theme.contentDefault,
       caretStyle        : theme.highlight,
@@ -218,6 +232,8 @@ public final class TextEntryBoxController {
       activeIndex       : state.activeIndex,
       text              : state.text,
       caret             : state.caret,
+      titleStyleOverride : state.titleStyleOverride,
+      promptStyleOverride: state.promptStyleOverride,
       buttonStyleOverride: state.buttonStyleOverride
     )
     isPresenting   = true
