@@ -130,7 +130,7 @@ public enum ModalDialogSurface {
     }
 
     let totalWidth = buttonStrings.reduce(0) { $0 + $1.count } + max(0, buttonStrings.count - 1)
-    let offset     = max(0, (bounds.width - totalWidth) / 2)
+    let offset     = max(0, bounds.width - totalWidth)
     var column     = bounds.column + offset
     let maxIndex   = max(0, buttonStrings.count - 1)
     let highlight  = max(0, min(highlightIndex, maxIndex))
