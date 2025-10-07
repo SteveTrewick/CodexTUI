@@ -6,6 +6,8 @@ import TerminalOutput
 // Controls how the driver initialises and interacts with the terminal.
 public struct RuntimeConfiguration {
   public var initialBounds      : BoxBounds
+  /// Controls whether the driver switches to the terminal's alternate buffer.
+  /// When enabled the driver also clears the scrollback buffer so previous history is hidden before the first frame is rendered.
   public var usesAlternateBuffer: Bool
   public var hidesCursor        : Bool
 
@@ -180,12 +182,21 @@ public final class TerminalDriver {
   // Applies configuration specific terminal commands such as switching buffers or hiding the cursor.
   private func enterScreen () {
     do {
+      var sequences : [AnsiSequence] = []
+
       if configuration.usesAlternateBuffer {
-        try terminal.perform([TerminalOutput.TerminalCommands.useAlternateBuffer()])
+        sequences.append(TerminalOutput.TerminalCommands.useAlternateBuffer())
+        sequences.append(TerminalOutput.TerminalCommand.clearScrollback.sequence)
       }
+
       if configuration.hidesCursor {
-        try terminal.perform([TerminalOutput.TerminalCommands.hideCursor()])
+        sequences.append(TerminalOutput.TerminalCommands.hideCursor())
       }
+
+      guard sequences.isEmpty == false else { return }
+
+      try terminal.perform(sequences)
+      try terminal.flush()
     } catch { }
   }
 
