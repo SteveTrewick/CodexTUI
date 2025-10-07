@@ -27,11 +27,27 @@ public struct StatusBar : Widget {
   }
 
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    var commands = [RenderCommand]()
-    let row      = context.bounds.maxRow
+    let row          = context.bounds.maxRow
+    let startColumn  = context.bounds.column
+    let endColumn    = context.bounds.maxCol
+    var commands     = [RenderCommand]()
+    var leftColumn   = startColumn
+    var rightColumn  = context.bounds.maxCol + 1
 
-    var leftColumn  = context.bounds.column
-    var rightColumn = context.bounds.maxCol + 1
+    if startColumn <= endColumn {
+      for column in startColumn...endColumn {
+        commands.append(
+          RenderCommand(
+            row   : row,
+            column: column,
+            tile  : SurfaceTile(
+              character : " ",
+              attributes: style
+            )
+          )
+        )
+      }
+    }
 
     // Leading items push characters from the left edge.
     for item in items where item.alignment == .leading {
