@@ -113,8 +113,8 @@ final class DemoApplication {
 
     let menuBar = MenuBar(
       items            : [
-        MenuItem(title: "File", activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]), alignment: .leading, isHighlighted: true),
-        MenuItem(title: "Help", activationKey: MenuActivationKey(key: .character("h")), alignment: .trailing)
+        MenuItem(title: "File", activationKey: MenuActivationKey(character: "f"), alignment: .leading, isHighlighted: true),
+        MenuItem(title: "Help", activationKey: MenuActivationKey(character: "h"), alignment: .trailing)
       ],
       style            : theme.menuBar,
       highlightStyle   : theme.highlight,

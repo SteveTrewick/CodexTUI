@@ -7,34 +7,31 @@ public enum MenuItemAlignment {
 }
 
 public struct MenuActivationKey : Equatable {
-  public var key       : Key
-  public var modifiers : KeyModifiers
+  public var character     : Character
+  public var requiresOption: Bool
 
-  public init ( key: Key, modifiers: KeyModifiers = [] ) {
-    self.key       = key
-    self.modifiers = modifiers
+  public init ( character: Character, requiresOption: Bool = true ) {
+    self.character      = character
+    self.requiresOption = requiresOption
   }
 
-  public func matches ( event: KeyEvent ) -> Bool {
-    
-    switch event.key {
-      case .meta (let char):
-        if modifiers.contains(.option) && key == Key.character(char) { return true }
-      
-    default : return false
+  public func matches ( token: TerminalInput.Token ) -> Bool {
+    switch token {
+      case .meta(let meta) where requiresOption:
+        switch meta {
+          case .alt(let value):
+            return value == character
+        }
+
+      case .text(let string) where requiresOption == false && string.count == 1:
+        guard let value = string.first else { return false }
+        return value == character
+
+      default:
+        return false
     }
-    return false
   }
 }
-
-//// TODO: because we wrap the token in a KeyEvent we end up doing this, which is nasty and only compiles because we have just one case
-//private extension TerminalInput.MetaKey {
-//  var character : Character {
-//    switch self {
-//      case .alt(let char): return char
-//    }
-//  }
-//}
 
 // Describes a single interactive item within the menu bar.
 public struct MenuItem : Equatable {
@@ -50,8 +47,8 @@ public struct MenuItem : Equatable {
     self.isHighlighted = isHighlighted
   }
 
-  public func matches ( event: KeyEvent ) -> Bool {
-    return activationKey.matches(event: event)
+  public func matches ( token: TerminalInput.Token ) -> Bool {
+    return activationKey.matches(token: token)
   }
 }
 

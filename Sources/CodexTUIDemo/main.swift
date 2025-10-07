@@ -36,12 +36,12 @@ final class DemoApplication {
     menuBar = MenuBar(
       items            : [
         MenuItem ( title: "File",
-                   activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]),
+                   activationKey: MenuActivationKey(character: "f"),
                    alignment    : .leading,
                    isHighlighted: true
         ),
         MenuItem ( title: "Help",
-                   activationKey: MenuActivationKey(key: .character("h"), modifiers: [.option] ),
+                   activationKey: MenuActivationKey(character: "h"),
                    alignment: .trailing
       )
       ],
@@ -88,7 +88,8 @@ final class DemoApplication {
   }
 
   private func handle ( event: KeyEvent ) {
-    if let item = menuBar.items.first(where: { $0.matches(event: event) }) {
+    if let token = activationToken(for: event),
+       let item  = menuBar.items.first(where: { $0.matches(token: token) }) {
       logBuffer.append(line: "Activated menu item: \(item.title)")
       driver.redraw()
       return
@@ -110,6 +111,15 @@ final class DemoApplication {
 
   private static func timestamp () -> String {
     return timestampFormatter.string(from: Date())
+  }
+
+  private func activationToken ( for event: KeyEvent ) -> TerminalInput.Token? {
+    switch event.key {
+      case .meta(let character):
+        return .meta(.alt(character))
+      default:
+        return nil
+    }
   }
 }
 

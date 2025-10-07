@@ -49,15 +49,14 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testMenuItemMatchesPrintableAccelerator () {
-    let accelerator  = MenuActivationKey(key: .character("f"), modifiers: [.option])
+    let accelerator  = MenuActivationKey(character: "f")
     let item         = MenuItem(title: "File", activationKey: accelerator)
-    
-    let metaMatching = KeyEvent(key: .meta("f"), modifiers: [.option])
-    let nonMatching  = KeyEvent(key: .character("f"))
 
-    
-    XCTAssertTrue(item.matches(event: metaMatching))
-    XCTAssertFalse(item.matches(event: nonMatching))
+    let metaMatching = TerminalInput.Token.meta(.alt("f"))
+    let nonMatching  = TerminalInput.Token.text("f")
+
+    XCTAssertTrue(item.matches(token: metaMatching))
+    XCTAssertFalse(item.matches(token: nonMatching))
   }
 
   func testTextBufferDefaultsToNewestLine () {
