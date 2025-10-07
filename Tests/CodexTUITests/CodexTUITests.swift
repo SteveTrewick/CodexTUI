@@ -49,7 +49,7 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testMenuItemMatchesPrintableAccelerator () {
-    let accelerator  = MenuActivationKey(token: .meta(.alt("f")))
+    let accelerator  = TerminalInput.Token.meta(.alt("f"))
     let item         = MenuItem(title: "File", activationKey: accelerator)
 
     let metaMatching = TerminalInput.Token.meta(.alt("f"))

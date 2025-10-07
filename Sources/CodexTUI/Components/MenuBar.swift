@@ -6,30 +6,14 @@ public enum MenuItemAlignment {
   case trailing
 }
 
-public struct MenuActivationKey : Equatable {
-  public var token: TerminalInput.Token
-
-  public init ( token: TerminalInput.Token ) {
-    self.token = token
-  }
-
-  public init ( alt character: Character ) {
-    self.init(token: .meta(.alt(character)))
-  }
-
-  public func matches ( token: TerminalInput.Token ) -> Bool {
-    return token == self.token
-  }
-}
-
 // Describes a single interactive item within the menu bar.
 public struct MenuItem : Equatable {
   public var title          : String
-  public var activationKey  : MenuActivationKey
+  public var activationKey  : TerminalInput.Token
   public var alignment      : MenuItemAlignment
   public var isHighlighted  : Bool
 
-  public init ( title: String, activationKey: MenuActivationKey, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false ) {
+  public init ( title: String, activationKey: TerminalInput.Token, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false ) {
     self.title         = title
     self.activationKey = activationKey
     self.alignment     = alignment
@@ -37,7 +21,7 @@ public struct MenuItem : Equatable {
   }
 
   public func matches ( token: TerminalInput.Token ) -> Bool {
-    return activationKey.matches(token: token)
+    return activationKey == token
   }
 }
 
