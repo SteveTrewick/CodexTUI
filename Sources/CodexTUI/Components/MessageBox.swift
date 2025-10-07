@@ -19,6 +19,7 @@ public struct MessageBox : Widget {
   public var messageLines      : [String]
   public var buttons           : [MessageBoxButton]
   public var activeButtonIndex : Int
+  public var titleStyle        : ColorPair
   public var contentStyle      : ColorPair
   public var buttonStyle       : ColorPair
   public var highlightStyle    : ColorPair
@@ -29,6 +30,7 @@ public struct MessageBox : Widget {
     messageLines: [String],
     buttons: [MessageBoxButton],
     activeButtonIndex: Int = 0,
+    titleStyle: ColorPair,
     contentStyle: ColorPair,
     buttonStyle: ColorPair,
     highlightStyle: ColorPair,
@@ -38,6 +40,7 @@ public struct MessageBox : Widget {
     self.messageLines      = messageLines
     self.buttons           = buttons
     self.activeButtonIndex = activeButtonIndex
+    self.titleStyle        = titleStyle
     self.contentStyle      = contentStyle
     self.buttonStyle       = buttonStyle
     self.highlightStyle    = highlightStyle
@@ -66,7 +69,7 @@ public struct MessageBox : Widget {
     var currentRow = interior.row
 
     if title.isEmpty == false {
-      renderCentered(text: title, row: currentRow, bounds: interior, style: highlightStyle, commands: &commands)
+      renderCentered(text: title, row: currentRow, bounds: interior, style: titleStyle, commands: &commands)
       currentRow = min(currentRow + 1, interior.maxRow)
     }
 

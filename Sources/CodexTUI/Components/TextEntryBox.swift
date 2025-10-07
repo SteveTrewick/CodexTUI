@@ -20,6 +20,7 @@ public struct TextEntryBox : Widget {
   public var caretIndex        : Int
   public var buttons           : [TextEntryBoxButton]
   public var activeButtonIndex : Int
+  public var titleStyle        : ColorPair
   public var contentStyle      : ColorPair
   public var fieldStyle        : ColorPair
   public var caretStyle        : ColorPair
@@ -34,6 +35,7 @@ public struct TextEntryBox : Widget {
     caretIndex: Int,
     buttons: [TextEntryBoxButton],
     activeButtonIndex: Int = 0,
+    titleStyle: ColorPair,
     contentStyle: ColorPair,
     fieldStyle: ColorPair,
     caretStyle: ColorPair,
@@ -47,6 +49,7 @@ public struct TextEntryBox : Widget {
     self.caretIndex        = caretIndex
     self.buttons           = buttons
     self.activeButtonIndex = activeButtonIndex
+    self.titleStyle        = titleStyle
     self.contentStyle      = contentStyle
     self.fieldStyle        = fieldStyle
     self.caretStyle        = caretStyle
@@ -77,7 +80,7 @@ public struct TextEntryBox : Widget {
     var currentRow = interior.row
 
     if title.isEmpty == false {
-      renderCentered(text: title, row: currentRow, bounds: interior, style: highlightStyle, commands: &commands)
+      renderCentered(text: title, row: currentRow, bounds: interior, style: titleStyle, commands: &commands)
       currentRow = min(currentRow + 1, interior.maxRow)
     }
 

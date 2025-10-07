@@ -129,13 +129,16 @@ public final class MessageBoxController {
       state.activeIndex = max(0, min(state.activeIndex, maxIndex))
     }
 
-    let bounds = MessageBox.centeredBounds(title: state.title, messageLines: state.messageLines, buttons: state.buttons, in: viewportBounds)
-    let theme  = scene.configuration.theme
+    let bounds     = MessageBox.centeredBounds(title: state.title, messageLines: state.messageLines, buttons: state.buttons, in: viewportBounds)
+    let theme      = scene.configuration.theme
+    var titleStyle = theme.contentDefault
+    titleStyle.style.insert(.bold)
     let widget = MessageBox(
       title             : state.title,
       messageLines      : state.messageLines,
       buttons           : state.buttons,
       activeButtonIndex : state.activeIndex,
+      titleStyle        : titleStyle,
       contentStyle      : theme.contentDefault,
       buttonStyle       : theme.dimHighlight,
       highlightStyle    : theme.highlight,

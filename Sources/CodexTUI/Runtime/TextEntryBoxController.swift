@@ -165,8 +165,10 @@ public final class TextEntryBoxController {
 
     state.caret = max(0, min(state.caret, state.text.count))
 
-    let bounds = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
-    let theme  = scene.configuration.theme
+    let bounds     = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
+    let theme      = scene.configuration.theme
+    var titleStyle = theme.contentDefault
+    titleStyle.style.insert(.bold)
     let widget = TextEntryBox(
       title             : state.title,
       prompt            : state.prompt,
@@ -174,6 +176,7 @@ public final class TextEntryBoxController {
       caretIndex        : state.caret,
       buttons           : state.buttons,
       activeButtonIndex : state.activeIndex,
+      titleStyle        : titleStyle,
       contentStyle      : theme.contentDefault,
       fieldStyle        : theme.contentDefault,
       caretStyle        : theme.highlight,
