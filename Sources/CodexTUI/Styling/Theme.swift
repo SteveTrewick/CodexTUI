@@ -51,7 +51,7 @@ public extension Theme {
 
   static let defaultMenuBar      : ColorPair = ColorPair(foreground: .black, background: .white, style: [])
   static let defaultStatusBar    : ColorPair = ColorPair(foreground: .black, background: .white, style: [])
-  static let defaultWindowChrome : ColorPair = ColorPair(foreground: .white, background: .black)
+  static let defaultWindowChrome : ColorPair = ColorPair(foreground: .white, background: .black, style: [.bold])
   static let defaultContent      : ColorPair = ColorPair(foreground: .white, background: .black)
   static let defaultHighlight    : ColorPair = ColorPair(foreground: .black, background: .white,  style: [.bold])
   static let defaultDimHighlight : ColorPair = ColorPair(foreground: .black, background: .white,  style: [.dim])
