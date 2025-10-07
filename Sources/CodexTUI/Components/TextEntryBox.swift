@@ -1,44 +1,55 @@
 import Foundation
 import TerminalInput
 
-public struct MessageBoxButton {
+public struct TextEntryBoxButton {
   public let text          : String
   public let activationKey : TerminalInput.ControlKey
-  public let handler       : (() -> Void)?
+  public let handler       : ((String) -> Void)?
 
-  public init ( text: String, activationKey: TerminalInput.ControlKey = .RETURN, handler: (() -> Void)? = nil ) {
+  public init ( text: String, activationKey: TerminalInput.ControlKey = .RETURN, handler: ((String) -> Void)? = nil ) {
     self.text          = text
     self.activationKey = activationKey
     self.handler       = handler
   }
 }
 
-// Renders a bordered message dialog with centred text and button row highlighting.
-public struct MessageBox : Widget {
+public struct TextEntryBox : Widget {
   public var title             : String
-  public var messageLines      : [String]
-  public var buttons           : [MessageBoxButton]
+  public var prompt            : String?
+  public var text              : String
+  public var caretIndex        : Int
+  public var buttons           : [TextEntryBoxButton]
   public var activeButtonIndex : Int
   public var contentStyle      : ColorPair
+  public var fieldStyle        : ColorPair
+  public var caretStyle        : ColorPair
   public var buttonStyle       : ColorPair
   public var highlightStyle    : ColorPair
   public var borderStyle       : ColorPair
 
   public init (
     title: String,
-    messageLines: [String],
-    buttons: [MessageBoxButton],
+    prompt: String? = nil,
+    text: String,
+    caretIndex: Int,
+    buttons: [TextEntryBoxButton],
     activeButtonIndex: Int = 0,
     contentStyle: ColorPair,
+    fieldStyle: ColorPair,
+    caretStyle: ColorPair,
     buttonStyle: ColorPair,
     highlightStyle: ColorPair,
     borderStyle: ColorPair
   ) {
     self.title             = title
-    self.messageLines      = messageLines
+    self.prompt            = prompt
+    self.text              = text
+    self.caretIndex        = caretIndex
     self.buttons           = buttons
     self.activeButtonIndex = activeButtonIndex
     self.contentStyle      = contentStyle
+    self.fieldStyle        = fieldStyle
+    self.caretStyle        = caretStyle
     self.buttonStyle       = buttonStyle
     self.highlightStyle    = highlightStyle
     self.borderStyle       = borderStyle
@@ -70,11 +81,14 @@ public struct MessageBox : Widget {
       currentRow = min(currentRow + 1, interior.maxRow)
     }
 
-    for line in messageLines {
-      guard currentRow <= interior.maxRow else { break }
-      renderCentered(text: line, row: currentRow, bounds: interior, style: contentStyle, commands: &commands)
-      currentRow += 1
+    if let prompt = prompt, prompt.isEmpty == false {
+      renderCentered(text: prompt, row: currentRow, bounds: interior, style: contentStyle, commands: &commands)
+      currentRow = min(currentRow + 1, interior.maxRow)
     }
+
+    let fieldRowLimit = surface.buttonRow.map { max(interior.row, $0 - 1) } ?? interior.maxRow
+    let fieldRow      = min(currentRow, fieldRowLimit)
+    renderField(row: fieldRow, bounds: interior, commands: &commands)
 
     return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
   }
@@ -98,15 +112,51 @@ public struct MessageBox : Widget {
       )
     }
   }
+
+  private func renderField ( row: Int, bounds: BoxBounds, commands: inout [RenderCommand] ) {
+    guard bounds.width > 0 else { return }
+    let maxColumn    = bounds.maxCol
+    let startColumn  = bounds.column
+    let characters   = Array(text)
+    let maximumCaret = max(0, min(bounds.width - 1, characters.count))
+    let caret        = max(0, min(caretIndex, maximumCaret))
+
+    for offset in 0..<bounds.width {
+      let column    = startColumn + offset
+      if column > maxColumn { break }
+      let character : Character
+
+      if offset < characters.count {
+        character = characters[offset]
+      } else {
+        character = " "
+      }
+
+      let attributes = offset == caret ? caretStyle : fieldStyle
+      commands.append(
+        RenderCommand(
+          row   : row,
+          column: column,
+          tile  : SurfaceTile(
+            character : character,
+            attributes: attributes
+          )
+        )
+      )
+    }
+  }
 }
 
-public extension MessageBox {
-  static func preferredSize ( title: String, messageLines: [String], buttons: [MessageBoxButton] ) -> (width: Int, height: Int) {
-    let contentWidths = [title.count] + messageLines.map { $0.count }
+public extension TextEntryBox {
+  static func preferredSize ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton] ) -> (width: Int, height: Int) {
+    let promptWidth   = prompt.map { $0.count } ?? 0
+    let fieldWidth    = max(1, text.count + 1)
+    let contentWidths = [title.count, promptWidth, fieldWidth]
     let maxContent    = contentWidths.max() ?? 0
-    var contentHeight = 0
+
+    var contentHeight = 1
     if title.isEmpty == false { contentHeight += 1 }
-    contentHeight += messageLines.count
+    if let prompt = prompt, prompt.isEmpty == false { contentHeight += 1 }
 
     return ModalDialogSurface.preferredSize(
       contentWidth : maxContent,
@@ -115,12 +165,15 @@ public extension MessageBox {
     )
   }
 
-  static func centeredBounds ( title: String, messageLines: [String], buttons: [MessageBoxButton], in container: BoxBounds ) -> BoxBounds {
-    let contentWidths = [title.count] + messageLines.map { $0.count }
+  static func centeredBounds ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton], in container: BoxBounds ) -> BoxBounds {
+    let promptWidth   = prompt.map { $0.count } ?? 0
+    let fieldWidth    = max(1, text.count + 1)
+    let contentWidths = [title.count, promptWidth, fieldWidth]
     let maxContent    = contentWidths.max() ?? 0
-    var contentHeight = 0
+
+    var contentHeight = 1
     if title.isEmpty == false { contentHeight += 1 }
-    contentHeight += messageLines.count
+    if let prompt = prompt, prompt.isEmpty == false { contentHeight += 1 }
 
     return ModalDialogSurface.centeredBounds(
       contentWidth : maxContent,
