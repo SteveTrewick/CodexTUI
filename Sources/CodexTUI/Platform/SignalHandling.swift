@@ -29,8 +29,6 @@ public final class SignalObserver {
   public func start () {
     guard source == nil else { return }
 
-    signal(monitoredSignal, SIG_IGN)
-
     let source = DispatchSource.makeSignalSource(signal: monitoredSignal, queue: queue)
     source.setEventHandler { [weak self] in
       self?.handler?()
@@ -38,7 +36,6 @@ public final class SignalObserver {
     source.resume()
 
     self.source = source
-    signal(monitoredSignal, SIG_IGN)
   }
 
   // Cancels the dispatch source and releases the handler closure.
