@@ -132,6 +132,7 @@ final class CodexTUITests: XCTestCase {
       messageLines      : ["Body"],
       buttons           : buttons,
       activeButtonIndex : 1,
+      titleStyle        : theme.highlight,
       contentStyle      : theme.contentDefault,
       buttonStyle       : theme.dimHighlight,
       highlightStyle    : theme.highlight,
@@ -190,6 +191,7 @@ final class CodexTUITests: XCTestCase {
       caretIndex        : 1,
       buttons           : buttons,
       activeButtonIndex : 0,
+      titleStyle        : theme.highlight,
       contentStyle      : theme.contentDefault,
       fieldStyle        : theme.contentDefault,
       caretStyle        : theme.highlight,
@@ -247,6 +249,29 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(controller.activeButton, 0)
     XCTAssertEqual(scene.overlays.count, initialOverlays.count + 1)
 
+    var expectedTitleStyle = theme.contentDefault
+    expectedTitleStyle.style.insert(.bold)
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected message box bounds to be available")
+      return
+    }
+
+    let context        = scene.layoutContext(for: viewport)
+    let overlayLayout  = scene.overlays.last!.layout(in: context)
+    let overlayCommands = overlayLayout.flattenedCommands()
+    let interior       = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let titleRow       = interior.row
+    let titleCommands  = overlayCommands.filter { command in
+      return command.row == titleRow && command.column >= interior.column && command.column <= interior.maxCol
+    }
+
+    let messageTitleCommands = titleCommands.filter { $0.tile.attributes == expectedTitleStyle }.sorted { $0.column < $1.column }
+
+    XCTAssertFalse(messageTitleCommands.isEmpty)
+    let renderedMessageTitle = String(messageTitleCommands.map { $0.tile.character })
+    XCTAssertEqual(renderedMessageTitle, "Notice")
+
     XCTAssertTrue(controller.handle(token: .control(.TAB)))
     XCTAssertEqual(controller.activeButton, 1)
 
@@ -286,6 +311,29 @@ final class CodexTUITests: XCTestCase {
     XCTAssertTrue(controller.isPresenting)
     XCTAssertEqual(controller.currentText, "")
     XCTAssertEqual(controller.caretIndex, 0)
+
+    var expectedTitleStyle = theme.contentDefault
+    expectedTitleStyle.style.insert(.bold)
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected text entry box bounds to be available")
+      return
+    }
+
+    let context        = scene.layoutContext(for: viewport)
+    let overlayLayout  = scene.overlays.last!.layout(in: context)
+    let overlayCommands = overlayLayout.flattenedCommands()
+    let interior       = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let titleRow       = interior.row
+    let titleCommands  = overlayCommands.filter { command in
+      return command.row == titleRow && command.column >= interior.column && command.column <= interior.maxCol
+    }
+
+    let entryTitleCommands = titleCommands.filter { $0.tile.attributes == expectedTitleStyle }.sorted { $0.column < $1.column }
+
+    XCTAssertFalse(entryTitleCommands.isEmpty)
+    let renderedEntryTitle = String(entryTitleCommands.map { $0.tile.character })
+    XCTAssertEqual(renderedEntryTitle, "Input")
 
     XCTAssertTrue(controller.handle(token: .text("ab")))
     XCTAssertEqual(controller.currentText, "ab")
