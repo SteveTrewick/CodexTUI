@@ -61,10 +61,10 @@ public struct MessageBox : Widget {
       highlightStyle   : highlightStyle
     )
 
-    var commands  = surface.result.commands
-    let children  = surface.result.children
-    let interior  = surface.interior
-    let buttonRow = surface.buttonRow ?? interior.maxRow
+    var commands = surface.result.commands
+    let children = surface.result.children
+    let interior = surface.interior
+    let bounds   = context.bounds
 
     if interior.width <= 0 || interior.height <= 0 {
       return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
@@ -74,28 +74,31 @@ public struct MessageBox : Widget {
       renderCentered(text: title, row: interior.row, bounds: interior, style: titleStyle, commands: &commands)
     }
 
-    let contentTop    = title.isEmpty ? interior.row : interior.row + 1
-    let clampedTop    = min(contentTop, interior.maxRow)
-    let contentBottom = buttons.isEmpty ? interior.maxRow : min(interior.maxRow, buttonRow - 1)
-    let contentHeight = contentBottom - clampedTop + 1
+    let contentTopCandidate = title.isEmpty ? interior.row : interior.row + 1
+    let clampedTop          = min(contentTopCandidate, interior.maxRow)
+    let buttonRowLimit      = surface.buttonRow.map { max(interior.row, $0 - 1) } ?? interior.maxRow
+    let topSeparator        = min(clampedTop, buttonRowLimit)
+    let bottomSeparator     = buttonRowLimit
 
-    if contentHeight > 0 && interior.width > 0 {
-      let contentBounds   = BoxBounds(row: clampedTop, column: interior.column, width: interior.width, height: contentHeight)
-      let contentInterior = contentBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    renderSeparator(row: topSeparator, bounds: bounds, commands: &commands)
+    if bottomSeparator != topSeparator {
+      renderSeparator(row: bottomSeparator, bounds: bounds, commands: &commands)
+    }
 
-      if contentInterior.height > 0 && contentInterior.width > 0 {
-        let contentBox      = Box(bounds: contentBounds, style: borderStyle)
-        let contentCommands = contentBox.layout(in: context).commands
-        commands.append(contentsOf: contentCommands)
+    let contentTop      = min(interior.maxRow, topSeparator + 1)
+    let contentBottom   = max(contentTop, min(interior.maxRow, bottomSeparator - 1))
+    let contentHeight   = max(0, contentBottom - contentTop + 1)
+    let contentBounds   = BoxBounds(row: contentTop, column: interior.column, width: interior.width, height: contentHeight)
+    let contentInterior = contentBounds.inset(by: EdgeInsets(top: 0, leading: 1, bottom: 0, trailing: 1))
 
-        var currentRow = contentInterior.row
+    if contentInterior.height > 0 && contentInterior.width > 0 {
+      var currentRow = contentInterior.row
 
-        for (index, line) in messageLines.enumerated() {
-          guard currentRow <= contentInterior.maxRow else { break }
-          let style = styleForMessageLine(at: index)
-          renderCentered(text: line, row: currentRow, bounds: contentInterior, style: style, commands: &commands)
-          currentRow += 1
-        }
+      for (index, line) in messageLines.enumerated() {
+        guard currentRow <= contentInterior.maxRow else { break }
+        let style = styleForMessageLine(at: index)
+        renderCentered(text: line, row: currentRow, bounds: contentInterior, style: style, commands: &commands)
+        currentRow += 1
       }
     }
 
@@ -122,6 +125,29 @@ public struct MessageBox : Widget {
           tile  : SurfaceTile(
             character : character,
             attributes: style
+          )
+        )
+      )
+    }
+  }
+
+  private func renderSeparator ( row: Int, bounds: BoxBounds, commands: inout [RenderCommand] ) {
+    guard row >= bounds.row && row <= bounds.maxRow else { return }
+    guard bounds.width > 0 else { return }
+
+    for column in bounds.column...bounds.maxCol {
+      let character : Character
+      if column == bounds.column { character = "├" }
+      else if column == bounds.maxCol { character = "┤" }
+      else { character = "─" }
+
+      commands.append(
+        RenderCommand(
+          row   : row,
+          column: column,
+          tile  : SurfaceTile(
+            character : character,
+            attributes: borderStyle
           )
         )
       )
