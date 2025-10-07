@@ -7,6 +7,8 @@ public final class MessageBoxController {
     var messageLines        : [String]
     var buttons             : [MessageBoxButton]
     var activeIndex         : Int
+    var titleStyleOverride  : ColorPair?
+    var messageStyleOverrides: [ColorPair?]?
     var buttonStyleOverride : ColorPair?
   }
 
@@ -35,6 +37,8 @@ public final class MessageBoxController {
     title: String,
     messageLines: [String],
     buttons: [MessageBoxButton],
+    titleStyleOverride: ColorPair? = nil,
+    messageStyleOverrides: [ColorPair?]? = nil,
     buttonStyleOverride: ColorPair? = nil
   ) {
     guard buttons.isEmpty == false else { return }
@@ -50,6 +54,8 @@ public final class MessageBoxController {
       messageLines      : messageLines,
       buttons           : buttons,
       activeIndex       : 0,
+      titleStyleOverride: titleStyleOverride,
+      messageStyleOverrides: messageStyleOverrides,
       buttonStyleOverride: buttonStyleOverride
     )
     presentState(newState)
@@ -146,9 +152,20 @@ public final class MessageBoxController {
     let buttonStyle  = state.buttonStyleOverride ?? theme.menuBar
     var titleStyle   = theme.contentDefault
     titleStyle.style.insert(.bold)
+    if let override = state.titleStyleOverride { titleStyle = override }
+    let messageLineStyles: [ColorPair?]
+    if let overrides = state.messageStyleOverrides {
+      messageLineStyles = state.messageLines.enumerated().map { index, _ in
+        guard index < overrides.count else { return nil }
+        return overrides[index]
+      }
+    } else {
+      messageLineStyles = []
+    }
     let widget = MessageBox(
       title             : state.title,
       messageLines      : state.messageLines,
+      messageLineStyles : messageLineStyles,
       buttons           : state.buttons,
       activeButtonIndex : state.activeIndex,
       titleStyle        : titleStyle,
@@ -171,6 +188,8 @@ public final class MessageBoxController {
       messageLines      : state.messageLines,
       buttons           : state.buttons,
       activeIndex       : state.activeIndex,
+      titleStyleOverride: state.titleStyleOverride,
+      messageStyleOverrides: state.messageStyleOverrides,
       buttonStyleOverride: state.buttonStyleOverride
     )
     isPresenting   = true

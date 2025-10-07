@@ -17,6 +17,7 @@ public struct MessageBoxButton {
 public struct MessageBox : Widget {
   public var title             : String
   public var messageLines      : [String]
+  public var messageLineStyles : [ColorPair?]
   public var buttons           : [MessageBoxButton]
   public var activeButtonIndex : Int
   public var titleStyle        : ColorPair
@@ -28,6 +29,7 @@ public struct MessageBox : Widget {
   public init (
     title: String,
     messageLines: [String],
+    messageLineStyles: [ColorPair?] = [],
     buttons: [MessageBoxButton],
     activeButtonIndex: Int = 0,
     titleStyle: ColorPair,
@@ -38,6 +40,7 @@ public struct MessageBox : Widget {
   ) {
     self.title             = title
     self.messageLines      = messageLines
+    self.messageLineStyles = messageLineStyles
     self.buttons           = buttons
     self.activeButtonIndex = activeButtonIndex
     self.titleStyle        = titleStyle
@@ -73,13 +76,20 @@ public struct MessageBox : Widget {
       currentRow = min(currentRow + 1, interior.maxRow)
     }
 
-    for line in messageLines {
+    for (index, line) in messageLines.enumerated() {
       guard currentRow <= interior.maxRow else { break }
-      renderCentered(text: line, row: currentRow, bounds: interior, style: contentStyle, commands: &commands)
+      let style = styleForMessageLine(at: index)
+      renderCentered(text: line, row: currentRow, bounds: interior, style: style, commands: &commands)
       currentRow += 1
     }
 
     return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
+  }
+
+  private func styleForMessageLine ( at index: Int ) -> ColorPair {
+    guard messageLineStyles.isEmpty == false else { return contentStyle }
+    guard index < messageLineStyles.count else { return contentStyle }
+    return messageLineStyles[index] ?? contentStyle
   }
 
   private func renderCentered ( text: String, row: Int, bounds: BoxBounds, style: ColorPair, commands: inout [RenderCommand] ) {

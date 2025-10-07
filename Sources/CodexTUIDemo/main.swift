@@ -218,6 +218,7 @@ final class DemoApplication {
   }
 
   private func showAboutMessage () {
+    let theme = messageBoxController.scene.configuration.theme
     messageBoxController.present(
       title       : "About CodexTUI",
       messageLines: [
@@ -227,8 +228,10 @@ final class DemoApplication {
       buttons     : [
         MessageBoxButton(text: "OK"),
         MessageBoxButton(text: "NO")
-        
-      ]
+
+      ],
+      titleStyleOverride   : theme.highlight,
+      messageStyleOverrides: [theme.highlight, nil]
     )
   }
 }
