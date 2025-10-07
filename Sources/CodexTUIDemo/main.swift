@@ -3,9 +3,10 @@ import Foundation
 import TerminalInput
 
 final class DemoApplication {
-  private let driver         : TerminalDriver
-  private let logBuffer      : TextBuffer
-  private let menuController : MenuController
+  private let driver               : TerminalDriver
+  private let logBuffer            : TextBuffer
+  private let menuController       : MenuController
+  private let messageBoxController : MessageBoxController
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -86,8 +87,14 @@ final class DemoApplication {
       viewportBounds : runtimeConfiguration.initialBounds
     )
 
+    messageBoxController = MessageBoxController(
+      scene          : scene,
+      viewportBounds : runtimeConfiguration.initialBounds
+    )
+
     driver = CodexTUI.makeDriver(scene: scene, configuration: runtimeConfiguration)
-    driver.menuController = menuController
+    driver.menuController        = menuController
+    driver.messageBoxController  = messageBoxController
 
     driver.onKeyEvent = { [weak self] token in
       self?.handle(token: token)
@@ -176,7 +183,16 @@ final class DemoApplication {
   }
 
   private func showAboutMessage () {
-    logBuffer.append(line: "CodexTUI demo - explore the menu with arrows and Return")
+    messageBoxController.present(
+      title       : "About CodexTUI",
+      messageLines: [
+        "CodexTUI is a Swift terminal UI toolkit.",
+        "Navigate menus with arrows and Return."
+      ],
+      buttons     : [
+        MessageBoxButton(text: "OK")
+      ]
+    )
   }
 }
 
