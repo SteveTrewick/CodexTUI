@@ -31,26 +31,31 @@ public final class TerminalDriver {
     case suspended
   }
 
-  public var configuration       : RuntimeConfiguration
-  public var scene                : Scene
-  public private(set) var state   : State
+  public var configuration         : RuntimeConfiguration
+  public var scene                 : Scene
+  public private(set) var state    : State
 
-  public var onKeyEvent : ( (TerminalInput.Token) -> Void )?
-  public var onResize   : ( (BoxBounds) -> Void )?
-  public var menuController : MenuController? {
+  public var onKeyEvent            : ( (TerminalInput.Token) -> Void )?
+  public var onResize              : ( (BoxBounds) -> Void )?
+  public var messageBoxController  : MessageBoxController? {
+    didSet {
+      messageBoxController?.update(viewportBounds: currentBounds)
+    }
+  }
+  public var menuController        : MenuController? {
     didSet {
       menuController?.update(viewportBounds: currentBounds)
     }
   }
 
-  private let input           : TerminalInput
-  private let terminal        : TerminalOutput.Terminal
-  private let terminalMode    : TerminalModeController
-  private let inputQueue      : DispatchQueue
-  private var inputSource     : DispatchSourceRead?
-  private var surface         : Surface
-  private var signalObserver  : SignalObserver
-  private var currentBounds   : BoxBounds
+  private let input               : TerminalInput
+  private let terminal            : TerminalOutput.Terminal
+  private let terminalMode        : TerminalModeController
+  private let inputQueue          : DispatchQueue
+  private var inputSource         : DispatchSourceRead?
+  private var surface             : Surface
+  private var signalObserver      : SignalObserver
+  private var currentBounds       : BoxBounds
 
   public init ( scene: Scene, terminal: TerminalOutput.Terminal, input: TerminalInput, terminalMode: TerminalModeController = TerminalModeController(), configuration: RuntimeConfiguration = RuntimeConfiguration(), signalObserver: SignalObserver = SignalObserver() ) {
     self.scene           = scene
@@ -134,6 +139,7 @@ public final class TerminalDriver {
   // Updates the backing surface when the terminal reports a new size and informs listeners.
   public func handleResize ( width: Int, height: Int ) {
     currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
+    messageBoxController?.update(viewportBounds: currentBounds)
     menuController?.update(viewportBounds: currentBounds)
     onResize?(currentBounds)
     redraw()
@@ -197,6 +203,11 @@ public final class TerminalDriver {
   // Emits terminal tokens to the driver callbacks when active.
   private func route ( token: TerminalInput.Token ) {
     guard state == .running else { return }
+    if let controller = messageBoxController, controller.handle(token: token) {
+      redraw()
+      return
+    }
+
     if let controller = menuController, controller.handle(token: token) {
       redraw()
       return

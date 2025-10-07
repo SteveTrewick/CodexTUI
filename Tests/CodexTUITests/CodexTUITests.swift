@@ -121,6 +121,75 @@ final class CodexTUITests: XCTestCase {
     XCTAssertFalse(mode.isRawModeActive)
   }
 
+  func testMessageBoxLayoutHighlightsActiveButton () {
+    let theme      = Theme.codex
+    let buttons    = [
+      MessageBoxButton(text: "First"),
+      MessageBoxButton(text: "Second")
+    ]
+    let messageBox = MessageBox(
+      title             : "Title",
+      messageLines      : ["Body"],
+      buttons           : buttons,
+      activeButtonIndex : 1,
+      contentStyle      : theme.contentDefault,
+      buttonStyle       : theme.dimHighlight,
+      highlightStyle    : theme.highlight,
+      borderStyle       : theme.windowChrome
+    )
+    let bounds     = BoxBounds(row: 1, column: 1, width: 30, height: 7)
+    let context    = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let layout     = messageBox.layout(in: context)
+    let commands   = layout.flattenedCommands()
+    let buttonRow  = bounds.maxRow - 1
+
+    let highlightTiles = commands.filter { command in
+      return command.row == buttonRow && command.tile.attributes == theme.highlight
+    }
+
+    XCTAssertFalse(highlightTiles.isEmpty)
+  }
+
+  func testMessageBoxControllerHandlesInputAndDismissal () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let controller = MessageBoxController(scene: scene, viewportBounds: viewport)
+    let initialOverlays = scene.overlays
+    let initialFocus    = scene.focusChain.active
+    var activationCount = 0
+
+    let buttons = [
+      MessageBoxButton(text: "OK"),
+      MessageBoxButton(text: "Details", handler: { activationCount += 1 })
+    ]
+
+    controller.present(title: "Notice", messageLines: ["Testing"], buttons: buttons)
+
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertEqual(controller.activeButton, 0)
+    XCTAssertEqual(scene.overlays.count, initialOverlays.count + 1)
+
+    XCTAssertTrue(controller.handle(token: .control(.TAB)))
+    XCTAssertEqual(controller.activeButton, 1)
+
+    XCTAssertTrue(controller.handle(token: .control(.RETURN)))
+    XCTAssertEqual(activationCount, 1)
+    XCTAssertFalse(controller.isPresenting)
+    XCTAssertEqual(scene.overlays.count, initialOverlays.count)
+    XCTAssertEqual(scene.focusChain.active, initialFocus)
+
+    controller.present(title: "Notice", messageLines: ["Testing"], buttons: buttons)
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertTrue(controller.handle(token: .escape))
+    XCTAssertFalse(controller.isPresenting)
+    XCTAssertEqual(scene.overlays.count, initialOverlays.count)
+    XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
+
   func testMenuControllerOpensMenuAndProducesOverlay () {
     let theme      = Theme.codex
     let entries    = [
