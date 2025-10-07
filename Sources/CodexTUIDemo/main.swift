@@ -6,6 +6,7 @@ import TerminalInput
 final class DemoApplication {
   private let driver    : TerminalDriver
   private let logBuffer : TextBuffer
+  private let menuBar   : MenuBar
   private let waitGroup : DispatchSemaphore
 
   private static let timestampFormatter : DateFormatter = {
@@ -32,10 +33,10 @@ final class DemoApplication {
 
     waitGroup = DispatchSemaphore(value: 0)
 
-    let menuBar = MenuBar(
+    menuBar = MenuBar(
       items            : [
-        MenuItem(title: "File", activationKey: .TAB, alignment: .leading, isHighlighted: true),
-        MenuItem(title: "Help", activationKey: .RETURN, alignment: .trailing)
+        MenuItem(title: "File", activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]), alignment: .leading, isHighlighted: true),
+        MenuItem(title: "Help", activationKey: MenuActivationKey(key: .character("h")), alignment: .trailing)
       ],
       style            : theme.menuBar,
       highlightStyle   : theme.highlight,
@@ -79,6 +80,12 @@ final class DemoApplication {
   }
 
   private func handle ( event: KeyEvent ) {
+    if let item = menuBar.items.first(where: { $0.matches(event: event) }) {
+      logBuffer.append(line: "Activated menu item: \(item.title)")
+      driver.redraw()
+      return
+    }
+
     switch event.key {
       case .meta(.escape)           :
         driver.stop()
