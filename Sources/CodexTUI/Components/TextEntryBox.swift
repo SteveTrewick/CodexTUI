@@ -75,6 +75,7 @@ public struct TextEntryBox : Widget {
     var commands = surface.result.commands
     let children = surface.result.children
     let interior = surface.interior
+    let bounds   = context.bounds
 
     if interior.width <= 0 || interior.height <= 0 {
       return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
@@ -87,14 +88,33 @@ public struct TextEntryBox : Widget {
       currentRow = min(currentRow + 1, interior.maxRow)
     }
 
-    if let prompt = prompt, prompt.isEmpty == false {
-      renderCentered(text: prompt, row: currentRow, bounds: interior, style: promptStyle, commands: &commands)
-      currentRow = min(currentRow + 1, interior.maxRow)
+    let buttonRowLimit   = surface.buttonRow.map { max(interior.row, $0 - 1) } ?? interior.maxRow
+    let topSeparatorRow  = min(currentRow, buttonRowLimit)
+    let bottomSeparator  = buttonRowLimit
+
+    renderSeparator(row: topSeparatorRow, bounds: bounds, commands: &commands)
+    if bottomSeparator != topSeparatorRow {
+      renderSeparator(row: bottomSeparator, bounds: bounds, commands: &commands)
     }
 
-    let fieldRowLimit = surface.buttonRow.map { max(interior.row, $0 - 1) } ?? interior.maxRow
-    let fieldRow      = min(currentRow, fieldRowLimit)
-    renderField(row: fieldRow, bounds: interior, commands: &commands)
+    let contentTop      = min(interior.maxRow, topSeparatorRow + 1)
+    let contentBottom   = max(contentTop, min(interior.maxRow, bottomSeparator - 1))
+    let contentHeight   = max(0, contentBottom - contentTop + 1)
+    let contentInterior = BoxBounds(row: contentTop, column: interior.column, width: interior.width, height: contentHeight)
+
+    guard contentInterior.height > 0 else {
+      return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
+    }
+
+    var contentRow = contentInterior.row
+
+    if let prompt = prompt, prompt.isEmpty == false {
+      renderCentered(text: prompt, row: contentRow, bounds: contentInterior, style: promptStyle, commands: &commands)
+      contentRow = min(contentRow + 1, contentInterior.maxRow)
+    }
+
+    let fieldRow = max(contentRow, contentInterior.row)
+    renderField(row: fieldRow, bounds: contentInterior, commands: &commands)
 
     return WidgetLayoutResult(bounds: context.bounds, commands: commands, children: children)
   }
@@ -119,8 +139,31 @@ public struct TextEntryBox : Widget {
     }
   }
 
+  private func renderSeparator ( row: Int, bounds: BoxBounds, commands: inout [RenderCommand] ) {
+    guard row >= bounds.row && row <= bounds.maxRow else { return }
+
+    for column in bounds.column...bounds.maxCol {
+      let character : Character
+      if column == bounds.column { character = "├" }
+      else if column == bounds.maxCol { character = "┤" }
+      else { character = "─" }
+
+      commands.append(
+        RenderCommand(
+          row   : row,
+          column: column,
+          tile  : SurfaceTile(
+            character : character,
+            attributes: borderStyle
+          )
+        )
+      )
+    }
+  }
+
   private func renderField ( row: Int, bounds: BoxBounds, commands: inout [RenderCommand] ) {
-    guard bounds.width > 0 else { return }
+    guard bounds.width > 0 && bounds.height > 0 else { return }
+    let clampedRow   = max(bounds.row, min(row, bounds.maxRow))
     let maxColumn    = bounds.maxCol
     let startColumn  = bounds.column
     let characters   = Array(text)
@@ -141,7 +184,7 @@ public struct TextEntryBox : Widget {
       let attributes = offset == caret ? caretStyle : fieldStyle
       commands.append(
         RenderCommand(
-          row   : row,
+          row   : clampedRow,
           column: column,
           tile  : SurfaceTile(
             character : character,
@@ -163,6 +206,7 @@ public extension TextEntryBox {
     var contentHeight = 1
     if title.isEmpty == false { contentHeight += 1 }
     if let prompt = prompt, prompt.isEmpty == false { contentHeight += 1 }
+    contentHeight += 2
 
     return ModalDialogSurface.preferredSize(
       contentWidth : maxContent,
@@ -180,6 +224,7 @@ public extension TextEntryBox {
     var contentHeight = 1
     if title.isEmpty == false { contentHeight += 1 }
     if let prompt = prompt, prompt.isEmpty == false { contentHeight += 1 }
+    contentHeight += 2
 
     return ModalDialogSurface.centeredBounds(
       contentWidth : maxContent,
