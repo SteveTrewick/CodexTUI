@@ -40,11 +40,27 @@ public struct MenuBar : Widget {
   }
 
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    let row = context.bounds.row
-    var commands = [RenderCommand]()
+    let row          = context.bounds.row
+    let startColumn  = context.bounds.column
+    let endColumn    = context.bounds.maxCol
+    var commands     = [RenderCommand]()
+    var leftColumn   = startColumn
+    var rightColumn  = context.bounds.maxCol + 1
 
-    var leftColumn  = context.bounds.column
-    var rightColumn = context.bounds.maxCol + 1
+    if startColumn <= endColumn {
+      for column in startColumn...endColumn {
+        commands.append(
+          RenderCommand(
+            row   : row,
+            column: column,
+            tile  : SurfaceTile(
+              character : " ",
+              attributes: style
+            )
+          )
+        )
+      }
+    }
 
     // Leading entries are emitted left-to-right, adding a space between each title.
     for item in items where item.alignment == .leading {
