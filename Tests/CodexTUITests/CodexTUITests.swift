@@ -177,12 +177,26 @@ final class CodexTUITests: XCTestCase {
     let context     = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
     let layout      = messageBox.layout(in: context)
     let commands    = layout.flattenedCommands()
-    let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
 
-    guard let contentInterior = messageContentInterior(for: interior, title: messageBox.title, hasButtons: messageBox.buttons.isEmpty == false) else {
+    guard let details = messageContentInterior(commands: commands, bounds: bounds) else {
       XCTFail("Expected content interior to be available")
       return
     }
+
+    let contentInterior = details.interior
+    let separators      = details.separators
+    let topSeparator    = separators.top
+    let bottomSeparator = separators.bottom
+
+    let topRuleCommands = commands.filter { command in
+      return command.row == topSeparator && command.tile.attributes == theme.windowChrome
+    }
+    XCTAssertTrue(topRuleCommands.contains { String($0.tile.character) == "─" })
+
+    let bottomRuleCommands = commands.filter { command in
+      return command.row == bottomSeparator && command.tile.attributes == theme.windowChrome
+    }
+    XCTAssertTrue(bottomRuleCommands.contains { String($0.tile.character) == "─" })
 
     let firstRow   = contentInterior.row
     let secondRow  = min(firstRow + 1, contentInterior.maxRow)
@@ -462,10 +476,12 @@ final class CodexTUITests: XCTestCase {
     let overlayCommands = overlayLayout.flattenedCommands()
     let interior       = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
 
-    guard let contentInterior = messageContentInterior(for: interior, title: title, hasButtons: buttons.isEmpty == false) else {
+    guard let details = messageContentInterior(commands: overlayCommands, bounds: bounds) else {
       XCTFail("Expected content interior to be available")
       return
     }
+
+    let contentInterior = details.interior
 
     let titleRow   = interior.row
     let messageRow = contentInterior.row
@@ -865,17 +881,42 @@ final class CodexTUITests: XCTestCase {
     return (interior, (top: topSeparator, bottom: bottomSeparator))
   }
 
-  private func messageContentInterior ( for interior: BoxBounds, title: String, hasButtons: Bool ) -> BoxBounds? {
-    let contentTop    = title.isEmpty ? interior.row : interior.row + 1
-    let clampedTop    = min(contentTop, interior.maxRow)
-    let contentBottom = hasButtons ? min(interior.maxRow, interior.maxRow - 1) : interior.maxRow
-    let contentHeight = contentBottom - clampedTop + 1
-    guard contentHeight > 0 else { return nil }
+  private func messageContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> (interior: BoxBounds, separators: (top: Int, bottom: Int))? {
+    let leftColumn    = bounds.column
+    let rightColumn   = bounds.maxCol
+    let separatorRows = commands.compactMap { command -> Int? in
+      guard command.column == leftColumn else { return nil }
+      guard String(command.tile.character) == "├" else { return nil }
+      return command.row
+    }.sorted()
 
-    let contentBounds   = BoxBounds(row: clampedTop, column: interior.column, width: interior.width, height: contentHeight)
-    let contentInterior = contentBounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
-    guard contentInterior.width > 0 && contentInterior.height > 0 else { return nil }
-    return contentInterior
+    guard let topSeparator = separatorRows.first else { return nil }
+    guard let bottomSeparator = separatorRows.last else { return nil }
+    guard bottomSeparator >= topSeparator else { return nil }
+
+    let hasTopRight = commands.contains { command in
+      return command.row == topSeparator && command.column == rightColumn && String(command.tile.character) == "┤"
+    }
+    guard hasTopRight else { return nil }
+
+    let hasBottomRight = commands.contains { command in
+      return command.row == bottomSeparator && command.column == rightColumn && String(command.tile.character) == "┤"
+    }
+    guard hasBottomRight else { return nil }
+
+    let width = max(0, bounds.width - 2)
+    guard width > 0 else { return nil }
+
+    let contentTopCandidate    = topSeparator + 1
+    let clampedContentTop      = min(bounds.maxRow, contentTopCandidate)
+    let contentBottomCandidate = bottomSeparator - 1
+    let clampedContentBottom   = min(bounds.maxRow, contentBottomCandidate)
+    let contentBottom          = max(clampedContentTop, clampedContentBottom)
+    let height                 = max(0, contentBottom - clampedContentTop + 1)
+    guard height > 0 else { return nil }
+
+    let interior = BoxBounds(row: clampedContentTop, column: bounds.column + 1, width: width, height: height)
+    return (interior, (top: topSeparator, bottom: bottomSeparator))
   }
 }
 
