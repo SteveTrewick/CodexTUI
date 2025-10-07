@@ -158,6 +158,35 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(edgeCommands.last?.tile.attributes, theme.highlight)
   }
 
+  func testMessageBoxLayoutAppliesMessageLineOverrides () {
+    let theme        = Theme.codex
+    let overridePair = ColorPair(foreground: .yellow, background: .black)
+    let messageBox   = MessageBox(
+      title             : "",
+      messageLines      : ["Override", "Default"],
+      messageLineStyles : [overridePair, nil],
+      buttons           : [],
+      activeButtonIndex : 0,
+      titleStyle        : theme.highlight,
+      contentStyle      : theme.contentDefault,
+      buttonStyle       : theme.dimHighlight,
+      highlightStyle    : theme.highlight,
+      borderStyle       : theme.windowChrome
+    )
+    let bounds      = BoxBounds(row: 1, column: 1, width: 30, height: 6)
+    let context     = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let layout      = messageBox.layout(in: context)
+    let commands    = layout.flattenedCommands()
+    let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let firstRow    = interior.row
+    let secondRow   = min(firstRow + 1, interior.maxRow)
+    let firstLine   = commands.filter { $0.row == firstRow && $0.tile.attributes == overridePair }
+    let secondLine  = commands.filter { $0.row == secondRow && $0.tile.attributes == theme.contentDefault }
+
+    XCTAssertFalse(firstLine.isEmpty)
+    XCTAssertFalse(secondLine.isEmpty)
+  }
+
   func testModalDialogSurfaceLayoutProvidesInteriorAndHighlight () {
     let theme   = Theme.codex
     let bounds  = BoxBounds(row: 1, column: 1, width: 24, height: 7)
@@ -364,6 +393,48 @@ final class CodexTUITests: XCTestCase {
 
     XCTAssertNotNil(overrideStyleCommand)
     XCTAssertNotNil(overrideHighlight)
+  }
+
+  func testMessageBoxControllerAppliesTitleAndMessageOverrides () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let controller = MessageBoxController(scene: scene, viewportBounds: viewport)
+    let titleStyle = ColorPair(foreground: .cyan, background: .black)
+    let lineStyle  = ColorPair(foreground: .magenta, background: .black)
+
+    controller.present(
+      title                : "Styled",
+      messageLines         : ["Custom", "Default"],
+      buttons              : [MessageBoxButton(text: "OK")],
+      titleStyleOverride   : titleStyle,
+      messageStyleOverrides: [lineStyle, nil]
+    )
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected message box bounds to be available")
+      return
+    }
+
+    let context        = scene.layoutContext(for: viewport)
+    let overlayLayout  = scene.overlays.last!.layout(in: context)
+    let overlayCommands = overlayLayout.flattenedCommands()
+    let interior       = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let titleRow       = interior.row
+    let messageRow     = min(titleRow + 1, interior.maxRow)
+    let secondRow      = min(messageRow + 1, interior.maxRow)
+
+    let titleCommands = overlayCommands.filter { $0.row == titleRow && $0.tile.attributes == titleStyle }
+    XCTAssertFalse(titleCommands.isEmpty)
+
+    let customCommands = overlayCommands.filter { $0.row == messageRow && $0.tile.attributes == lineStyle }
+    XCTAssertFalse(customCommands.isEmpty)
+
+    let defaultCommands = overlayCommands.filter { $0.row == secondRow && $0.tile.attributes == theme.contentDefault }
+    XCTAssertFalse(defaultCommands.isEmpty)
   }
 
   func testTextEntryBoxControllerHandlesInputAndDismissal () {
