@@ -3,10 +3,11 @@ import Foundation
 import TerminalInput
 
 final class DemoApplication {
-  private let driver               : TerminalDriver
-  private let logBuffer            : TextBuffer
-  private let menuController       : MenuController
-  private let messageBoxController : MessageBoxController
+  private let driver                 : TerminalDriver
+  private let logBuffer              : TextBuffer
+  private let menuController         : MenuController
+  private let messageBoxController   : MessageBoxController
+  private let textEntryBoxController : TextEntryBoxController
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -92,9 +93,15 @@ final class DemoApplication {
       viewportBounds : runtimeConfiguration.initialBounds
     )
 
+    textEntryBoxController = TextEntryBoxController(
+      scene          : scene,
+      viewportBounds : runtimeConfiguration.initialBounds
+    )
+
     driver = CodexTUI.makeDriver(scene: scene, configuration: runtimeConfiguration)
     driver.menuController        = menuController
     driver.messageBoxController  = messageBoxController
+    driver.textEntryBoxController = textEntryBoxController
 
     driver.onKeyEvent = { [weak self] token in
       self?.handle(token: token)
@@ -143,6 +150,11 @@ final class DemoApplication {
           action         : { [weak self] in self?.logTimestampEntry() }
         ),
         MenuItem.Entry(
+          title          : "Log Custom Message",
+          acceleratorHint: "Ctrl+L",
+          action         : { [weak self] in self?.promptForLogEntry() }
+        ),
+        MenuItem.Entry(
           title          : "Clear Log",
           acceleratorHint: "Ctrl+K",
           action         : { [weak self] in self?.clearLog() }
@@ -170,6 +182,29 @@ final class DemoApplication {
 
   private func logTimestampEntry () {
     logBuffer.append(line: "Timestamp: \(DemoApplication.timestamp())")
+  }
+
+  private func promptForLogEntry () {
+    textEntryBoxController.present(
+      title   : "Log Custom Message",
+      prompt  : "Enter text to append to the log.",
+      buttons : [
+        TextEntryBoxButton(
+          text    : "Save",
+          handler : { [weak self] text in
+            guard let self = self else { return }
+            self.logBuffer.append(line: text)
+            self.driver.redraw()
+          }
+        ),
+        TextEntryBoxButton(
+          text    : "Cancel",
+          handler : { [weak self] _ in
+            self?.driver.redraw()
+          }
+        )
+      ]
+    )
   }
 
   private func clearLog () {
