@@ -18,10 +18,11 @@ public extension SurfaceTile {
 
 // Lightweight framebuffer used to track differences between frames for efficient redraws.
 public struct Surface {
-  public private(set) var width    : Int
-  public private(set) var height   : Int
-  private var tiles                : [SurfaceTile]
-  private var previousFrameTiles   : [SurfaceTile]
+  public private(set) var width             : Int
+  public private(set) var height            : Int
+  private var tiles                         : [SurfaceTile]
+  private var previousFrameTiles            : [SurfaceTile]
+  private var needsFullRefresh              : Bool
 
   public init ( width: Int, height: Int ) {
     let count  = max(0, width * height)
@@ -31,6 +32,7 @@ public struct Surface {
     self.height             = height
     self.tiles              = Array(repeating: filler, count: count)
     self.previousFrameTiles = Array(repeating: filler, count: count)
+    self.needsFullRefresh   = false
   }
 
   public mutating func resize ( width: Int, height: Int ) {
@@ -40,8 +42,8 @@ public struct Surface {
     self.height = height
 
     let count = max(0, width * height)
-    tiles              = Array(repeating: .blank, count: count)
-    previousFrameTiles = Array(repeating: .blank, count: count)
+    tiles            = Array(repeating: .blank, count: count)
+    needsFullRefresh = true
   }
 
   public mutating func clear ( with tile: SurfaceTile = .blank ) {
@@ -65,8 +67,16 @@ public struct Surface {
   }
 
   // Produces a minimal list of changed tiles. When the surface dimensions change we fall back to a full refresh.
-  public func diff () -> [SurfaceChange] {
-    guard tiles.count == previousFrameTiles.count else { return fullRefreshChanges() }
+  public mutating func diff () -> [SurfaceChange] {
+    guard needsFullRefresh == false else {
+      needsFullRefresh = false
+      return fullRefreshChanges()
+    }
+
+    guard tiles.count == previousFrameTiles.count else {
+      needsFullRefresh = false
+      return fullRefreshChanges()
+    }
 
     var changes = [SurfaceChange]()
     changes.reserveCapacity(tiles.count / 2)
