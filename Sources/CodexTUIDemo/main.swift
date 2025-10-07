@@ -30,16 +30,18 @@ final class DemoApplication {
     )
 
     menuBar = MenuBar(
-      items            : [
-        MenuItem ( title: "File",
-                   activationKey: .meta(.alt("f")),
-                   alignment    : .leading,
-                   isHighlighted: true
-        ),
-        MenuItem ( title: "Help",
-                   activationKey: .meta(.alt("h")),
-                   alignment: .trailing
-      )
+      items : [
+          MenuItem ( title: "File",
+                     activationKey: .meta(.alt("f")),
+                     alignment    : .leading,
+                     isHighlighted: true
+          ),
+          MenuItem ( title: "Help",
+                     activationKey: .meta(.alt("h")),
+                     alignment    : .trailing,
+                     isHighlighted: true
+                   
+          )
       ],
       
       style            : theme.menuBar,
