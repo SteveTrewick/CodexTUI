@@ -49,15 +49,14 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testMenuItemMatchesPrintableAccelerator () {
-    let accelerator  = MenuActivationKey(key: .character("f"), modifiers: [.option])
+    let accelerator  = MenuActivationKey(character: "f", requiresAlt: true)
     let item         = MenuItem(title: "File", activationKey: accelerator)
-    
-    let metaMatching = KeyEvent(key: .meta("f"), modifiers: [.option])
-    let nonMatching  = KeyEvent(key: .character("f"))
 
-    
-    XCTAssertTrue(item.matches(event: metaMatching))
-    XCTAssertFalse(item.matches(event: nonMatching))
+    let metaMatching = TerminalInput.Token.meta(.alt("f"))
+    let nonMatching  = TerminalInput.Token.text("f")
+
+    XCTAssertTrue(item.matches(token: metaMatching))
+    XCTAssertFalse(item.matches(token: nonMatching))
   }
 
   func testTextBufferDefaultsToNewestLine () {
@@ -100,8 +99,11 @@ final class CodexTUITests: XCTestCase {
 
     let expectation = expectation(description: "Key event delivered without buffering")
 
-    driver.onKeyEvent = { event in
-      XCTAssertEqual(event, KeyEvent(key: .character("a")))
+    driver.onKeyEvent = { token in
+      switch token {
+        case .text(let string) : XCTAssertEqual(string, "a")
+        default                : XCTFail("Unexpected token: \(token)")
+      }
       XCTAssertTrue(mode.isRawModeActive)
       expectation.fulfill()
     }
