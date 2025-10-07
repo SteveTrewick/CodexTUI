@@ -101,7 +101,7 @@ public final class TextEntryBoxController {
             activateButton(at: state.activeIndex)
             return true
 
-          case .BACKSPACE :
+          case .BACKSPACE, .DEL :
             if state.caret > 0 {
               let removalIndex = state.text.index(state.text.startIndex, offsetBy: state.caret)
               let lowerBound   = state.text.index(before: removalIndex)
