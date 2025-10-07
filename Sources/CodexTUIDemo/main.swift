@@ -185,6 +185,8 @@ final class DemoApplication {
   }
 
   private func promptForLogEntry () {
+    let pair = ColorPair(foreground: Theme.defaultContent.foreground, background: Theme.defaultContent.background, style: [.dim] )
+    
     textEntryBoxController.present(
       title   : "Log Custom Message",
       prompt  : "Enter text to append to the log.",
@@ -203,7 +205,9 @@ final class DemoApplication {
             self?.driver.redraw()
           }
         )
-      ]
+      ],
+      promptStyleOverride: pair
+      
     )
   }
 
