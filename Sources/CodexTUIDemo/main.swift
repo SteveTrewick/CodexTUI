@@ -36,12 +36,12 @@ final class DemoApplication {
     menuBar = MenuBar(
       items            : [
         MenuItem ( title: "File",
-                   activationKey: MenuActivationKey(token: .meta(.alt("f"))),
+                   activationKey: .meta(.alt("f")),
                    alignment    : .leading,
                    isHighlighted: true
         ),
         MenuItem ( title: "Help",
-                   activationKey: MenuActivationKey(token: .meta(.alt("h"))),
+                   activationKey: .meta(.alt("h")),
                    alignment: .trailing
       )
       ],
