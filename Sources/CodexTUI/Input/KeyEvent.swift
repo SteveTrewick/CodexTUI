@@ -18,7 +18,8 @@ public enum Key : Equatable {
   case control(TerminalInput.ControlKey)
   case cursor(TerminalInput.CursorKey)
   case function(TerminalInput.FunctionKey)
-  case meta(TerminalInput.MetaKey)
+  case meta(Character)
+  case escape
 }
 
 // Option set describing modifier flags that accompany an event.
@@ -52,7 +53,11 @@ public extension KeyEvent {
         return KeyEvent(key: .function(function))
 
       case .meta(let meta):
-        return KeyEvent(key: .meta(meta), modifiers: [.option])
+        switch meta {
+          case .alt(let char) : return KeyEvent(key: .meta(char))
+        }
+      
+      case .escape : return KeyEvent(key: .escape)
 
       default:
         return nil
