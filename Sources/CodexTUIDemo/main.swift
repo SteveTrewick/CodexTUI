@@ -35,9 +35,17 @@ final class DemoApplication {
 
     menuBar = MenuBar(
       items            : [
-        MenuItem(title: "File", activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]), alignment: .leading, isHighlighted: true),
-        MenuItem(title: "Help", activationKey: MenuActivationKey(key: .character("h")), alignment: .trailing)
+        MenuItem ( title: "File",
+                   activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]),
+                   alignment    : .leading,
+                   isHighlighted: true
+        ),
+        MenuItem ( title: "Help",
+                   activationKey: MenuActivationKey(key: .character("h"), modifiers: [.option] ),
+                   alignment: .trailing
+      )
       ],
+      
       style            : theme.menuBar,
       highlightStyle   : theme.highlight,
       dimHighlightStyle: theme.dimHighlight
@@ -87,7 +95,7 @@ final class DemoApplication {
     }
 
     switch event.key {
-      case .meta(.escape)           :
+      case .escape        :
         driver.stop()
         waitGroup.signal()
 
