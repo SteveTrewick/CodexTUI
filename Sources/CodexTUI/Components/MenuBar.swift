@@ -1,23 +1,40 @@
 import Foundation
-import TerminalInput
 
 public enum MenuItemAlignment {
   case leading
   case trailing
 }
 
+public struct MenuActivationKey : Equatable {
+  public var key       : Key
+  public var modifiers : KeyModifiers
+
+  public init ( key: Key, modifiers: KeyModifiers = [] ) {
+    self.key       = key
+    self.modifiers = modifiers
+  }
+
+  public func matches ( event: KeyEvent ) -> Bool {
+    return event.key == key && event.modifiers == modifiers
+  }
+}
+
 // Describes a single interactive item within the menu bar.
 public struct MenuItem : Equatable {
   public var title          : String
-  public var activationKey  : TerminalInput.ControlKey
+  public var activationKey  : MenuActivationKey
   public var alignment      : MenuItemAlignment
   public var isHighlighted  : Bool
 
-  public init ( title: String, activationKey: TerminalInput.ControlKey, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false ) {
+  public init ( title: String, activationKey: MenuActivationKey, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false ) {
     self.title         = title
     self.activationKey = activationKey
     self.alignment     = alignment
     self.isHighlighted = isHighlighted
+  }
+
+  public func matches ( event: KeyEvent ) -> Bool {
+    return activationKey.matches(event: event)
   }
 }
 

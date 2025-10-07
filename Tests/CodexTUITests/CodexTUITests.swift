@@ -48,6 +48,16 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(firstTile?.attributes.style, TerminalOutput.TextStyle.none)
   }
 
+  func testMenuItemMatchesPrintableAccelerator () {
+    let accelerator = MenuActivationKey(key: .character("f"), modifiers: [.option])
+    let item        = MenuItem(title: "File", activationKey: accelerator)
+    let matching    = KeyEvent(key: .character("f"), modifiers: [.option])
+    let nonMatching = KeyEvent(key: .character("f"))
+
+    XCTAssertTrue(item.matches(event: matching))
+    XCTAssertFalse(item.matches(event: nonMatching))
+  }
+
   func testTextBufferDefaultsToNewestLine () {
     let buffer        = TextBuffer(identifier: FocusIdentifier("buffer"))
     let focusChain    = FocusChain()
