@@ -48,6 +48,28 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(firstTile?.attributes.style, TerminalOutput.TextStyle.none)
   }
 
+  func testTextBufferDefaultsToNewestLine () {
+    let buffer        = TextBuffer(identifier: FocusIdentifier("buffer"))
+    let focusChain    = FocusChain()
+    let focusSnapshot = focusChain.snapshot()
+    let bounds        = BoxBounds(row: 1, column: 1, width: 10, height: 2)
+    let context       = LayoutContext(bounds: bounds, theme: Theme.codex, focus: focusSnapshot)
+
+    buffer.append(line: "first")
+    buffer.append(line: "second")
+    buffer.append(line: "third")
+
+    let result      = buffer.layout(in: context)
+    let lastRow     = bounds.row + bounds.height - 1
+    let lineCommand = result.commands
+      .filter { $0.row == lastRow }
+      .sorted { $0.column < $1.column }
+    let rendered    = String(lineCommand.map { $0.tile.character })
+
+    XCTAssertEqual(buffer.scrollOffset, 1)
+    XCTAssertEqual(rendered, "third")
+  }
+
   func testDriverDeliversKeyPressImmediatelyInRawMode () {
     let connection    = TestTerminalConnection()
     let terminal      = TerminalOutput.Terminal(connection: connection)

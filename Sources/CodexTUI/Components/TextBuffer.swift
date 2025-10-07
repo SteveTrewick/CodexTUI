@@ -25,13 +25,16 @@ public final class TextBuffer : FocusableWidget {
 
   public func append ( line: String ) {
     lines.append(line)
+    scrollOffset  = max(0, lines.count - 1)
   }
 
   // Projects the text buffer into the provided bounds respecting scroll offsets and clipping.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let bounds    = context.bounds.inset(by: context.environment.contentInsets)
     let maxLines  = max(0, bounds.height)
-    let startLine = max(0, min(lines.count - maxLines, scrollOffset))
+    let maxOffset = max(0, lines.count - maxLines)
+    scrollOffset  = min(maxOffset, max(0, scrollOffset))
+    let startLine = scrollOffset
     var commands  = [RenderCommand]()
 
     // Calculate the visible slice of lines then copy characters until we hit the horizontal limit.
