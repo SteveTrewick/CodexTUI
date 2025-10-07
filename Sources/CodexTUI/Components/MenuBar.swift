@@ -7,29 +7,18 @@ public enum MenuItemAlignment {
 }
 
 public struct MenuActivationKey : Equatable {
-  public var character     : Character
-  public var requiresOption: Bool
+  public var token: TerminalInput.Token
 
-  public init ( character: Character, requiresOption: Bool = true ) {
-    self.character      = character
-    self.requiresOption = requiresOption
+  public init ( token: TerminalInput.Token ) {
+    self.token = token
+  }
+
+  public init ( alt character: Character ) {
+    self.init(token: .meta(.alt(character)))
   }
 
   public func matches ( token: TerminalInput.Token ) -> Bool {
-    switch token {
-      case .meta(let meta) where requiresOption:
-        switch meta {
-          case .alt(let value):
-            return value == character
-        }
-
-      case .text(let string) where requiresOption == false && string.count == 1:
-        guard let value = string.first else { return false }
-        return value == character
-
-      default:
-        return false
-    }
+    return token == self.token
   }
 }
 
