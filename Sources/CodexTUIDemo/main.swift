@@ -1,5 +1,4 @@
 import CodexTUI
-import Dispatch
 import Foundation
 import TerminalInput
 
@@ -7,7 +6,6 @@ final class DemoApplication {
   private let driver    : TerminalDriver
   private let logBuffer : TextBuffer
   private let menuBar   : MenuBar
-  private let waitGroup : DispatchSemaphore
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -30,8 +28,6 @@ final class DemoApplication {
       highlightStyle: theme.highlight,
       isInteractive : true
     )
-
-    waitGroup = DispatchSemaphore(value: 0)
 
     menuBar = MenuBar(
       items            : [
@@ -84,7 +80,12 @@ final class DemoApplication {
 
   func run () {
     driver.start()
-    waitGroup.wait()
+
+    let runLoop = RunLoop.current
+
+    while driver.state != .stopped {
+      _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
+    }
   }
 
   private func handle ( token: TerminalInput.Token ) {
@@ -97,7 +98,6 @@ final class DemoApplication {
     switch token {
       case .escape        :
         driver.stop()
-        waitGroup.signal()
 
       case .text(let string)                   :
         guard string.count == 1, let character = string.first else { break }
