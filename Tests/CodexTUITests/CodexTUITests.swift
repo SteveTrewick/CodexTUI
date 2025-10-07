@@ -253,10 +253,39 @@ final class CodexTUITests: XCTestCase {
     let layout  = widget.layout(in: context)
     let commands = layout.flattenedCommands()
     let interior = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
-    var caretRow = interior.row
-    if widget.title.isEmpty == false { caretRow = min(caretRow + 1, interior.maxRow) }
-    if let prompt = widget.prompt, prompt.isEmpty == false { caretRow = min(caretRow + 1, interior.maxRow) }
-    let caretCol = min(interior.column + widget.caretIndex, interior.maxCol)
+
+    guard let contentInfo = textEntryContentInterior(commands: commands, bounds: bounds) else {
+      XCTFail("Expected text entry interior bounds to be available")
+      return
+    }
+
+    let contentInterior = contentInfo.interior
+    let topSeparator    = contentInfo.separators.top
+    let bottomSeparator = contentInfo.separators.bottom
+
+    let leftTopConnector = commands.first { command in
+      return command.row == topSeparator && command.column == bounds.column && String(command.tile.character) == "├"
+    }
+    XCTAssertNotNil(leftTopConnector)
+
+    let rightTopConnector = commands.first { command in
+      return command.row == topSeparator && command.column == bounds.maxCol && String(command.tile.character) == "┤"
+    }
+    XCTAssertNotNil(rightTopConnector)
+
+    let leftBottomConnector = commands.first { command in
+      return command.row == bottomSeparator && command.column == bounds.column && String(command.tile.character) == "├"
+    }
+    XCTAssertNotNil(leftBottomConnector)
+
+    let rightBottomConnector = commands.first { command in
+      return command.row == bottomSeparator && command.column == bounds.maxCol && String(command.tile.character) == "┤"
+    }
+    XCTAssertNotNil(rightBottomConnector)
+
+    var caretRow = contentInterior.row
+    if let prompt = widget.prompt, prompt.isEmpty == false { caretRow = min(caretRow + 1, contentInterior.maxRow) }
+    let caretCol = min(contentInterior.column + widget.caretIndex, contentInterior.maxCol)
     let caretTile = commands.first { command in
       return command.row == caretRow && command.column == caretCol && command.tile.attributes == theme.highlight
     }
@@ -498,7 +527,13 @@ final class CodexTUITests: XCTestCase {
     let renderedEntryTitle = String(entryTitleCommands.map { $0.tile.character })
     XCTAssertEqual(renderedEntryTitle, "Input")
 
-    let promptRow      = min(titleRow + 1, interior.maxRow)
+    guard let contentInfo = textEntryContentInterior(commands: overlayCommands, bounds: bounds) else {
+      XCTFail("Expected text entry interior bounds to be available")
+      return
+    }
+
+    let contentInterior = contentInfo.interior
+    let promptRow       = contentInterior.row
     let promptCommands = overlayCommands.filter { command in
       return command.row == promptRow && command.column >= interior.column && command.column <= interior.maxCol
     }
@@ -588,7 +623,13 @@ final class CodexTUITests: XCTestCase {
 
     XCTAssertNotNil(defaultTitleCommand)
 
-    let promptRow            = min(titleRow + 1, interior.maxRow)
+    guard let contentInfo = textEntryContentInterior(commands: overlayCommands, bounds: bounds) else {
+      XCTFail("Expected text entry interior bounds to be available")
+      return
+    }
+
+    let contentInterior      = contentInfo.interior
+    let promptRow            = contentInterior.row
     let promptCommands       = overlayCommands.filter { $0.row == promptRow }
     let defaultPromptCommand = promptCommands.first { $0.tile.attributes == theme.contentDefault }
 
@@ -633,7 +674,13 @@ final class CodexTUITests: XCTestCase {
 
     XCTAssertNotNil(overrideTitleCommand)
 
-    let overridePromptRow       = min(overrideTitleRow + 1, overrideInterior.maxRow)
+    guard let overrideContentInfo = textEntryContentInterior(commands: overrideCommands, bounds: overrideBounds) else {
+      XCTFail("Expected override text entry interior bounds to be available")
+      return
+    }
+
+    let overrideContentInterior = overrideContentInfo.interior
+    let overridePromptRow       = overrideContentInterior.row
     let overridePromptCommands  = overrideCommands.filter { $0.row == overridePromptRow }
     let overridePromptCommand   = overridePromptCommands.first { $0.tile.attributes == overridePromptStyle }
 
@@ -781,6 +828,41 @@ final class CodexTUITests: XCTestCase {
     XCTAssertTrue(controller.handle(token: .escape))
     XCTAssertTrue(scene.overlays.isEmpty)
     XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
+
+  private func textEntryContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> (interior: BoxBounds, separators: (top: Int, bottom: Int))? {
+    let leftColumn   = bounds.column
+    let rightColumn  = bounds.maxCol
+    let separatorRows = commands.compactMap { command -> Int? in
+      guard command.column == leftColumn else { return nil }
+      guard String(command.tile.character) == "├" else { return nil }
+      return command.row
+    }.sorted()
+
+    guard let topSeparator = separatorRows.first else { return nil }
+    guard let bottomSeparator = separatorRows.last else { return nil }
+    guard bottomSeparator > topSeparator else { return nil }
+
+    let hasRightTop = commands.contains { command in
+      return command.row == topSeparator && command.column == rightColumn && String(command.tile.character) == "┤"
+    }
+    guard hasRightTop else { return nil }
+
+    let hasRightBottom = commands.contains { command in
+      return command.row == bottomSeparator && command.column == rightColumn && String(command.tile.character) == "┤"
+    }
+    guard hasRightBottom else { return nil }
+
+    let width = max(0, bounds.width - 2)
+    guard width > 0 else { return nil }
+
+    let contentTop    = topSeparator + 1
+    let contentBottom = max(contentTop, bottomSeparator - 1)
+    let height        = max(0, contentBottom - contentTop + 1)
+    guard height > 0 else { return nil }
+
+    let interior = BoxBounds(row: contentTop, column: bounds.column + 1, width: width, height: height)
+    return (interior, (top: topSeparator, bottom: bottomSeparator))
   }
 
   private func messageContentInterior ( for interior: BoxBounds, title: String, hasButtons: Bool ) -> BoxBounds? {
