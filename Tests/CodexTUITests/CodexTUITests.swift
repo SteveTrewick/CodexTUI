@@ -149,6 +149,13 @@ final class CodexTUITests: XCTestCase {
     }
 
     XCTAssertFalse(highlightTiles.isEmpty)
+
+    let interior      = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let edgeCommands  = commands.filter { command in
+      return command.row == buttonRow && command.column == interior.maxCol
+    }
+    XCTAssertFalse(edgeCommands.isEmpty)
+    XCTAssertEqual(edgeCommands.last?.tile.attributes, theme.highlight)
   }
 
   func testModalDialogSurfaceLayoutProvidesInteriorAndHighlight () {
@@ -176,6 +183,12 @@ final class CodexTUITests: XCTestCase {
     }
 
     XCTAssertFalse(highlightTiles.isEmpty)
+
+    let edgeCommands = layout.result.commands.filter { command in
+      return command.row == buttonRow && command.column == layout.interior.maxCol
+    }
+    XCTAssertFalse(edgeCommands.isEmpty)
+    XCTAssertEqual(edgeCommands.last?.tile.attributes, theme.highlight)
   }
 
   func testTextEntryBoxLayoutHighlightsCaret () {
@@ -224,6 +237,13 @@ final class CodexTUITests: XCTestCase {
         XCTAssertEqual(fallback.column, caretCol)
       }
     }
+
+    let buttonRow      = interior.maxRow
+    let edgeCommands   = commands.filter { command in
+      return command.row == buttonRow && command.column == interior.maxCol
+    }
+    XCTAssertFalse(edgeCommands.isEmpty)
+    XCTAssertEqual(edgeCommands.last?.tile.attributes, theme.dimHighlight)
   }
 
   func testMessageBoxControllerHandlesInputAndDismissal () {
