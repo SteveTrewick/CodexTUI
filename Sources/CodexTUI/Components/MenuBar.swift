@@ -8,21 +8,50 @@ public enum MenuItemAlignment {
 
 // Describes a single interactive item within the menu bar.
 public struct MenuItem : Equatable {
+  public struct Entry : Equatable {
+    public var title           : String
+    public var acceleratorHint : String?
+    public var action          : (() -> Void)?
+
+    public init ( title: String, acceleratorHint: String? = nil, action: (() -> Void)? = nil ) {
+      self.title           = title
+      self.acceleratorHint = acceleratorHint
+      self.action          = action
+    }
+  }
+
   public var title          : String
   public var activationKey  : TerminalInput.Token
   public var alignment      : MenuItemAlignment
   public var isHighlighted  : Bool
+  public var isOpen         : Bool
+  public var entries        : [Entry]
 
-  public init ( title: String, activationKey: TerminalInput.Token, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false ) {
+  public init ( title: String, activationKey: TerminalInput.Token, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false, isOpen: Bool = false, entries: [Entry] = [] ) {
     self.title         = title
     self.activationKey = activationKey
     self.alignment     = alignment
     self.isHighlighted = isHighlighted
+    self.isOpen        = isOpen
+    self.entries       = entries
   }
 
   public func matches ( token: TerminalInput.Token ) -> Bool {
     return activationKey == token
   }
+}
+
+public func == ( lhs: MenuItem.Entry, rhs: MenuItem.Entry ) -> Bool {
+  return lhs.title == rhs.title && lhs.acceleratorHint == rhs.acceleratorHint
+}
+
+public func == ( lhs: MenuItem, rhs: MenuItem ) -> Bool {
+  return lhs.title == rhs.title &&
+    lhs.activationKey == rhs.activationKey &&
+    lhs.alignment == rhs.alignment &&
+    lhs.isHighlighted == rhs.isHighlighted &&
+    lhs.isOpen == rhs.isOpen &&
+    lhs.entries == rhs.entries
 }
 
 // Renders a classic single line menu bar with highlighted accelerator characters.
@@ -84,7 +113,15 @@ public struct MenuBar : Widget {
 
     for (index, character) in characters.enumerated() {
       let isFirst    = index == 0
-      let attributes = isFirst ? highlightAttributes(for: item) : style
+      let attributes : ColorPair
+
+      if item.isOpen {
+        attributes = highlightStyle
+      } else if isFirst {
+        attributes = highlightAttributes(for: item)
+      } else {
+        attributes = style
+      }
 
       // The first character is styled using either a dim or active highlight to mimic accelerator hints.
       commands.append(
@@ -103,6 +140,7 @@ public struct MenuBar : Widget {
   }
 
   private func highlightAttributes ( for item: MenuItem ) -> ColorPair {
+    if item.isOpen { return highlightStyle }
     return item.isHighlighted ? highlightStyle : dimHighlightStyle
   }
 }

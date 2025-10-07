@@ -120,6 +120,121 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(mode.restoreCount, 1)
     XCTAssertFalse(mode.isRawModeActive)
   }
+
+  func testMenuControllerOpensMenuAndProducesOverlay () {
+    let theme      = Theme.codex
+    let entries    = [
+      MenuItem.Entry(title: "First", acceleratorHint: "Ctrl+F"),
+      MenuItem.Entry(title: "Second", acceleratorHint: "Ctrl+S")
+    ]
+    let menuItems  = [
+      MenuItem(
+        title         : "File",
+        activationKey : .meta(.alt("f")),
+        alignment     : .leading,
+        isHighlighted : true,
+        entries       : entries
+      )
+    ]
+    let menuBar    = MenuBar(
+      items : menuItems,
+      style : theme.menuBar,
+      highlightStyle   : theme.highlight,
+      dimHighlightStyle: theme.dimHighlight
+    )
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let content    = AnyWidget(buffer)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(menuBar: menuBar, content: content, configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 40, height: 12)
+    let controller = MenuController(scene: scene, menuBar: menuBar, content: content, viewportBounds: viewport)
+
+    XCTAssertTrue(controller.handle(token: .meta(.alt("f"))))
+    XCTAssertEqual(scene.overlays.count, 1)
+    XCTAssertNotNil(controller.activeOverlayBounds)
+
+    let overlayBounds = controller.activeOverlayBounds!
+    let context       = scene.layoutContext(for: viewport)
+    let layout        = scene.overlays[0].layout(in: context)
+    XCTAssertEqual(layout.bounds, overlayBounds)
+
+    let commands = layout.flattenedCommands()
+    let highlightTile = commands.first { command in
+      return command.row == overlayBounds.row + 1 && command.column == overlayBounds.column + 1
+    }
+
+    XCTAssertEqual(highlightTile?.tile.attributes, theme.highlight)
+  }
+
+  func testMenuControllerNavigationUpdatesHighlight () {
+    let theme      = Theme.codex
+    let entries    = [
+      MenuItem.Entry(title: "First"),
+      MenuItem.Entry(title: "Second")
+    ]
+    let menuItems  = [
+      MenuItem(
+        title         : "File",
+        activationKey : .meta(.alt("f")),
+        alignment     : .leading,
+        isHighlighted : true,
+        entries       : entries
+      )
+    ]
+    let menuBar    = MenuBar(items: menuItems, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let content    = AnyWidget(buffer)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(menuBar: menuBar, content: content, configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 40, height: 12)
+    let controller = MenuController(scene: scene, menuBar: menuBar, content: content, viewportBounds: viewport)
+
+    XCTAssertTrue(controller.handle(token: .meta(.alt("f"))))
+    XCTAssertTrue(controller.handle(token: .cursor(.down)))
+
+    let overlayBounds = controller.activeOverlayBounds!
+    let context       = scene.layoutContext(for: viewport)
+    let layout        = scene.overlays[0].layout(in: context)
+    let commands      = layout.flattenedCommands()
+
+    let secondRowTile = commands.first { command in
+      return command.row == overlayBounds.row + 2 && command.column == overlayBounds.column + 1
+    }
+
+    XCTAssertEqual(secondRowTile?.tile.attributes, theme.highlight)
+  }
+
+  func testMenuControllerEscapeRestoresFocusAndClearsOverlay () {
+    let theme      = Theme.codex
+    let entries    = [MenuItem.Entry(title: "Only Item")]
+    let menuItems  = [
+      MenuItem(
+        title         : "File",
+        activationKey : .meta(.alt("f")),
+        alignment     : .leading,
+        isHighlighted : true,
+        entries       : entries
+      )
+    ]
+    let menuBar    = MenuBar(items: menuItems, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let content    = AnyWidget(buffer)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(menuBar: menuBar, content: content, configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 40, height: 12)
+    let controller = MenuController(scene: scene, menuBar: menuBar, content: content, viewportBounds: viewport)
+
+    let initialFocus = scene.focusChain.active
+
+    XCTAssertTrue(controller.handle(token: .meta(.alt("f"))))
+    XCTAssertEqual(scene.overlays.isEmpty, false)
+    XCTAssertTrue(controller.handle(token: .escape))
+    XCTAssertTrue(scene.overlays.isEmpty)
+    XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
 }
 
 private final class TestTerminalModeController: TerminalModeController {
