@@ -113,8 +113,8 @@ final class DemoApplication {
 
     let menuBar = MenuBar(
       items            : [
-        MenuItem(title: "File", activationKey: MenuActivationKey(key: .character("f"), modifiers: [.option]), alignment: .leading, isHighlighted: true),
-        MenuItem(title: "Help", activationKey: MenuActivationKey(key: .character("h")), alignment: .trailing)
+        MenuItem(title: "File", activationKey: MenuActivationKey(character: "f", requiresAlt: true), alignment: .leading, isHighlighted: true),
+        MenuItem(title: "Help", activationKey: MenuActivationKey(character: "h", requiresAlt: true), alignment: .trailing)
       ],
       style            : theme.menuBar,
       highlightStyle   : theme.highlight,
@@ -147,8 +147,8 @@ final class DemoApplication {
 
     driver = CodexTUI.makeDriver(scene: scene)
 
-    driver.onKeyEvent = { [weak self] event in
-      self?.handle(event: event)
+    driver.onKeyEvent = { [weak self] token in
+      self?.handle(token: token)
     }
   }
 
@@ -157,13 +157,14 @@ final class DemoApplication {
     waitGroup.wait()
   }
 
-  private func handle ( event: KeyEvent ) {
-    switch event.key {
-      case .meta(.escape)           :
+  private func handle ( token: TerminalInput.Token ) {
+    switch token {
+      case .escape                  :
         driver.stop()
         waitGroup.signal()
 
-      case .character(let character)           :
+      case .text(let string)                   :
+        guard string.count == 1, let character = string.first else { return }
         logBuffer.append(line: "Key pressed: \(character)")
         driver.redraw()
 

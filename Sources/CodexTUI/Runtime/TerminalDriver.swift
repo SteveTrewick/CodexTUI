@@ -30,7 +30,7 @@ public final class TerminalDriver {
   public var scene                : Scene
   public private(set) var state   : State
 
-  public var onKeyEvent : ( (KeyEvent) -> Void )?
+  public var onKeyEvent : ( (TerminalInput.Token) -> Void )?
   public var onResize   : ( (BoxBounds) -> Void )?
 
   private let input           : TerminalInput
@@ -171,12 +171,10 @@ public final class TerminalDriver {
     signalObserver.start()
   }
 
-  // Converts terminal tokens into semantic events and emits them to the driver callbacks.
+  // Emits terminal tokens to the driver callbacks when active.
   private func route ( token: TerminalInput.Token ) {
     guard state == .running else { return }
-
-    guard let event = KeyEvent.from(token: token) else { return }
-    onKeyEvent?(event)
+    onKeyEvent?(token)
   }
 
   // Applies configuration specific terminal commands such as switching buffers or hiding the cursor.
