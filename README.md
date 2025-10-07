@@ -74,18 +74,16 @@ Understanding these pillars will help you diagnose layout issues, extend widgets
 
 ## Quick Start Demo
 
-The following minimal example shows how to compose a scene with a menu bar, status bar, and scrolling text buffer using the core CodexTUI types. It also demonstrates how to drive the terminal directly via `TerminalDriver`.
+The following minimal example shows how to compose a scene with a menu bar, status bar, and scrolling text buffer using the core CodexTUI types. It also demonstrates how to drive the terminal directly via `TerminalDriver` and keep the application alive by running the current `RunLoop` until shutdown.
 
 ```swift
 import CodexTUI
-import Dispatch
 import Foundation
 import TerminalInput
 
 final class DemoApplication {
   private let driver    : TerminalDriver
   private let logBuffer : TextBuffer
-  private let waitGroup : DispatchSemaphore
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -108,8 +106,6 @@ final class DemoApplication {
       highlightStyle: theme.highlight,
       isInteractive : true
     )
-
-    waitGroup = DispatchSemaphore(value: 0)
 
     let menuBar = MenuBar(
       items            : [
@@ -154,14 +150,18 @@ final class DemoApplication {
 
   func run () {
     driver.start()
-    waitGroup.wait()
+
+    let runLoop = RunLoop.current
+
+    while driver.state != .stopped {
+      _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
+    }
   }
 
   private func handle ( token: TerminalInput.Token ) {
     switch token {
       case .escape                  :
         driver.stop()
-        waitGroup.signal()
 
       case .text(let string)                   :
         guard string.count == 1, let character = string.first else { return }
@@ -187,7 +187,7 @@ This sample demonstrates:
 - Registering a focusable `TextBuffer` and embedding it inside a standard `Scene`.
 - Bootstrapping a `TerminalDriver` using `CodexTUI.makeDriver(scene:)`.
 - Responding to keyboard events manually, including triggering redraws and graceful shutdown.
-- Keeping the process alive with a `DispatchSemaphore` until the user exits.
+- Keeping the process alive by pumping the current `RunLoop` until the driver reports `.stopped`.
 
 ## Building and Running CodexTUIDemo
 
