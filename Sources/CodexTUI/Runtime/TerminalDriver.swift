@@ -2,6 +2,11 @@ import Foundation
 import Dispatch
 import TerminalInput
 import TerminalOutput
+#if os(Linux)
+import Glibc
+#else
+import Darwin
+#endif
 
 // Controls how the driver initialises and interacts with the terminal.
 public struct RuntimeConfiguration {
@@ -64,7 +69,11 @@ public final class TerminalDriver {
     configureInput()
     configureSignalObserver()
     enterScreen()
-    redraw()
+    if let size = measureTerminalSize() {
+      handleResize(width: size.width, height: size.height)
+    } else {
+      redraw()
+    }
   }
 
   // Releases terminal mutations while keeping the scene in memory.
@@ -85,7 +94,11 @@ public final class TerminalDriver {
     terminalMode.enterRawMode()
     configureInput()
     enterScreen()
-    redraw()
+    if let size = measureTerminalSize() {
+      handleResize(width: size.width, height: size.height)
+    } else {
+      redraw()
+    }
   }
 
   // Stops all processing and restores the terminal to its original state.
@@ -166,7 +179,11 @@ public final class TerminalDriver {
   private func configureSignalObserver () {
     signalObserver.setHandler { [weak self] in
       guard let self = self else { return }
-      self.handleResize(width: self.currentBounds.width, height: self.currentBounds.height)
+      if let size = self.measureTerminalSize() {
+        self.handleResize(width: size.width, height: size.height)
+      } else {
+        self.handleResize(width: self.currentBounds.width, height: self.currentBounds.height)
+      }
     }
     signalObserver.start()
   }
@@ -209,5 +226,19 @@ public final class TerminalDriver {
       }
       try terminal.flush()
     } catch { }
+  }
+
+  private func measureTerminalSize () -> (width: Int, height: Int)? {
+    var windowSize = winsize()
+    let result     = withUnsafeMutablePointer(to: &windowSize) { pointer -> Int32 in
+      return ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), pointer)
+    }
+    guard result == 0 else { return nil }
+
+    let width  = Int(windowSize.ws_col)
+    let height = Int(windowSize.ws_row)
+    guard width > 0 && height > 0 else { return nil }
+
+    return (width, height)
   }
 }
