@@ -2,6 +2,7 @@ import CodexTUI
 import Foundation
 import TerminalInput
 
+/// Minimal interactive application that wires together controllers to showcase CodexTUI features.
 final class DemoApplication {
   private let driver                 : TerminalDriver
   private let logBuffer              : TextBuffer

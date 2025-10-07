@@ -8,7 +8,7 @@ import Glibc
 import Darwin
 #endif
 
-// Controls how the driver initialises and interacts with the terminal.
+/// Controls how the driver initialises and interacts with the terminal.
 public struct RuntimeConfiguration {
   public var initialBounds      : BoxBounds
   /// Controls whether the driver switches to the terminal's alternate buffer.
@@ -23,8 +23,10 @@ public struct RuntimeConfiguration {
   }
 }
 
-// Orchestrates input handling, scene rendering and terminal lifecycle management.
+/// Orchestrates input handling, scene rendering and terminal lifecycle management. The driver takes
+/// ownership of the terminal while running and ensures the display is kept in sync with scene updates.
 public final class TerminalDriver {
+  /// Lifecycle states the driver can occupy.
   public enum State {
     case stopped
     case running

@@ -1,13 +1,18 @@
 import Foundation
 import TerminalInput
 
+/// Alignment strategy for positioning menu items inside the menu bar. Leading items flow from the
+/// left edge while trailing items are packed against the right edge.
 public enum MenuItemAlignment {
   case leading
   case trailing
 }
 
-// Describes a single interactive item within the menu bar.
+/// Describes a single interactive menu bar item, including its accelerator token, alignment and
+/// dropdown entries. The structure is intentionally value-based so scenes can easily diff and update
+/// menu state.
 public struct MenuItem : Equatable {
+  /// Represents a selectable entry inside a menu item's dropdown list.
   public struct Entry : Equatable {
     public var title           : String
     public var acceleratorHint : String?
@@ -54,7 +59,8 @@ public func == ( lhs: MenuItem, rhs: MenuItem ) -> Bool {
     lhs.entries == rhs.entries
 }
 
-// Renders a classic single line menu bar with highlighted accelerator characters.
+/// Widget that renders a single-line menu bar. It handles background clearing, accelerator
+/// highlighting and left/right alignment rules for menu items.
 public struct MenuBar : Widget {
   public var items            : [MenuItem]
   public var style            : ColorPair
@@ -68,6 +74,12 @@ public struct MenuBar : Widget {
     self.dimHighlightStyle = dimHighlightStyle
   }
 
+  /// Renders the menu bar within the supplied bounds. The routine first paints a solid background
+  /// across the entire row so gaps never appear between items. It then walks the leading items from
+  /// left to right updating a cursor as titles are written, and finally walks the trailing items in
+  /// reverse so they pack neatly against the right edge without requiring prior measurements. Each
+  /// item is rendered via `render(item:row:column:)`, which decides whether to use highlight colours
+  /// based on the item's state.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let row          = context.bounds.row
     let startColumn  = context.bounds.column

@@ -1,5 +1,8 @@
 import Foundation
 
+/// Composite widget that displays a titled selection list inside a bordered surface. It reuses the
+/// shared `SelectionListSurface` to render the scrollable body and adds optional title rendering on
+/// top of the calculated interior bounds.
 public struct SelectionList : Widget {
   public var title          : String
   public var entries        : [SelectionListEntry]
@@ -19,6 +22,11 @@ public struct SelectionList : Widget {
     self.borderStyle    = borderStyle
   }
 
+  /// Lays out the selection list by delegating the heavy lifting to `SelectionListSurface`. The
+  /// returned interior bounds are used to optionally render the header row, ensuring the title shares
+  /// the same padding and centring rules as the list content. Control flow mirrors the surface helper:
+  /// we quickly exit when there is no interior space and otherwise append the title commands before
+  /// returning the combined layout tree.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let headerRows = title.isEmpty ? 0 : 1
     let surface    = SelectionListSurface.layout(
