@@ -21,11 +21,13 @@ public final class TextEntryBoxController {
   private var storedOverlays : [AnyWidget]?
   private var previousFocus  : FocusIdentifier?
   private var viewportBounds : BoxBounds
+  private var startWidth     : Int
   private var state          : State?
 
-  public init ( scene: Scene, viewportBounds: BoxBounds = BoxBounds(row: 1, column: 1, width: 80, height: 24) ) {
+  public init ( scene: Scene, viewportBounds: BoxBounds = BoxBounds(row: 1, column: 1, width: 80, height: 24), startWidth: Int? = nil ) {
     self.scene          = scene
     self.viewportBounds = viewportBounds
+    self.startWidth     = max(1, startWidth ?? 1)
     self.storedOverlays = nil
     self.previousFocus  = nil
     self.state          = nil
@@ -163,7 +165,7 @@ public final class TextEntryBoxController {
 
     state.caret = max(0, min(state.caret, state.text.count))
 
-    let bounds = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, in: viewportBounds)
+    let bounds = TextEntryBox.centeredBounds(title: state.title, prompt: state.prompt, text: state.text, buttons: state.buttons, minimumFieldWidth: startWidth, in: viewportBounds)
     let theme  = scene.configuration.theme
     let widget = TextEntryBox(
       title             : state.title,

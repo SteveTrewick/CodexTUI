@@ -148,9 +148,9 @@ public struct TextEntryBox : Widget {
 }
 
 public extension TextEntryBox {
-  static func preferredSize ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton] ) -> (width: Int, height: Int) {
+  static func preferredSize ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton], minimumFieldWidth: Int = 1 ) -> (width: Int, height: Int) {
     let promptWidth   = prompt.map { $0.count } ?? 0
-    let fieldWidth    = max(1, text.count + 1)
+    let fieldWidth    = max(minimumFieldWidth, text.count + 1)
     let contentWidths = [title.count, promptWidth, fieldWidth]
     let maxContent    = contentWidths.max() ?? 0
 
@@ -165,9 +165,9 @@ public extension TextEntryBox {
     )
   }
 
-  static func centeredBounds ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton], in container: BoxBounds ) -> BoxBounds {
+  static func centeredBounds ( title: String, prompt: String?, text: String, buttons: [TextEntryBoxButton], minimumFieldWidth: Int = 1, in container: BoxBounds ) -> BoxBounds {
     let promptWidth   = prompt.map { $0.count } ?? 0
-    let fieldWidth    = max(1, text.count + 1)
+    let fieldWidth    = max(minimumFieldWidth, text.count + 1)
     let contentWidths = [title.count, promptWidth, fieldWidth]
     let maxContent    = contentWidths.max() ?? 0
 

@@ -321,6 +321,34 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
   }
 
+  func testTextEntryBoxControllerRespectsStartWidth () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let startWidth = 20
+    let controller = TextEntryBoxController(scene: scene, viewportBounds: viewport, startWidth: startWidth)
+    let buttons    = [
+      TextEntryBoxButton(text: "Save"),
+      TextEntryBoxButton(text: "Cancel")
+    ]
+
+    controller.present(title: "Input", prompt: "Name", text: "", buttons: buttons)
+
+    XCTAssertTrue(controller.isPresenting)
+
+    guard let bounds = controller.currentBounds else {
+      XCTFail("Expected bounds to be set")
+      return
+    }
+
+    let expected = TextEntryBox.centeredBounds(title: "Input", prompt: "Name", text: "", buttons: buttons, minimumFieldWidth: startWidth, in: viewport)
+
+    XCTAssertEqual(bounds.width, expected.width)
+  }
+
   func testMenuControllerOpensMenuAndProducesOverlay () {
     let theme      = Theme.codex
     let entries    = [
