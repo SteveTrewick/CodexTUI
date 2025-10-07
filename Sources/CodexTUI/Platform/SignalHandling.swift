@@ -12,13 +12,15 @@ public final class SignalObserver {
   public typealias Handler = () -> Void
 
   private let monitoredSignal : Int32
-  private let queue           : DispatchQueue
+  private let signalQueue     : DispatchQueue
+  private let handlerQueue    : DispatchQueue
   private var source          : DispatchSourceSignal?
   private var handler         : Handler?
 
-  public init ( signal: Int32 = SIGWINCH, queue: DispatchQueue = .main ) {
+  public init ( signal: Int32 = SIGWINCH, signalQueue: DispatchQueue = DispatchQueue(label: "CodexTUI.SignalObserver", qos: .userInitiated), handlerQueue: DispatchQueue = .main ) {
     self.monitoredSignal = signal
-    self.queue           = queue
+    self.signalQueue     = signalQueue
+    self.handlerQueue    = handlerQueue
   }
 
   public func setHandler ( _ handler: @escaping Handler ) {
@@ -29,9 +31,13 @@ public final class SignalObserver {
   public func start () {
     guard source == nil else { return }
 
-    let source = DispatchSource.makeSignalSource(signal: monitoredSignal, queue: queue)
+    let source = DispatchSource.makeSignalSource(signal: monitoredSignal, queue: signalQueue)
     source.setEventHandler { [weak self] in
-      self?.handler?()
+      guard let self     = self else { return }
+      guard let handler  = self.handler else { return }
+      self.handlerQueue.async {
+        handler()
+      }
     }
     source.resume()
 

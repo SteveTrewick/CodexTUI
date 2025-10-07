@@ -94,7 +94,7 @@ final class CodexTUITests: XCTestCase {
       input          : input,
       terminalMode   : mode,
       configuration  : configuration,
-      signalObserver : SignalObserver(queue: DispatchQueue(label: "test-signal-queue"))
+      signalObserver : SignalObserver(signalQueue: DispatchQueue(label: "test-signal-queue"))
     )
 
     let expectation = expectation(description: "Key event delivered without buffering")
