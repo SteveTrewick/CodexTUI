@@ -150,6 +150,80 @@ final class CodexTUITests: XCTestCase {
     XCTAssertFalse(highlightTiles.isEmpty)
   }
 
+  func testModalDialogSurfaceLayoutProvidesInteriorAndHighlight () {
+    let theme   = Theme.codex
+    let bounds  = BoxBounds(row: 1, column: 1, width: 24, height: 7)
+    let context = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let layout  = ModalDialogSurface.layout(
+      in               : context,
+      contentStyle     : theme.contentDefault,
+      borderStyle      : theme.windowChrome,
+      buttonTitles     : ["One", "Two"],
+      activeButtonIndex: 1,
+      buttonStyle      : theme.dimHighlight,
+      highlightStyle   : theme.highlight
+    )
+
+    XCTAssertEqual(layout.interior, bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1)))
+    guard let buttonRow = layout.buttonRow else {
+      XCTFail("Expected button row to be present")
+      return
+    }
+
+    let highlightTiles = layout.result.commands.filter { command in
+      return command.row == buttonRow && command.tile.attributes == theme.highlight
+    }
+
+    XCTAssertFalse(highlightTiles.isEmpty)
+  }
+
+  func testTextEntryBoxLayoutHighlightsCaret () {
+    let theme   = Theme.codex
+    let buttons = [
+      TextEntryBoxButton(text: "OK"),
+      TextEntryBoxButton(text: "Cancel")
+    ]
+    let widget  = TextEntryBox(
+      title             : "Edit",
+      prompt            : "Name",
+      text              : "abc",
+      caretIndex        : 1,
+      buttons           : buttons,
+      activeButtonIndex : 0,
+      contentStyle      : theme.contentDefault,
+      fieldStyle        : theme.contentDefault,
+      caretStyle        : theme.highlight,
+      buttonStyle       : theme.dimHighlight,
+      highlightStyle    : theme.highlight,
+      borderStyle       : theme.windowChrome
+    )
+    let bounds  = BoxBounds(row: 1, column: 1, width: 30, height: 7)
+    let context = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let layout  = widget.layout(in: context)
+    let commands = layout.flattenedCommands()
+    let interior = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    var caretRow = interior.row
+    if widget.title.isEmpty == false { caretRow = min(caretRow + 1, interior.maxRow) }
+    if let prompt = widget.prompt, prompt.isEmpty == false { caretRow = min(caretRow + 1, interior.maxRow) }
+    let caretCol = min(interior.column + widget.caretIndex, interior.maxCol)
+    let caretTile = commands.first { command in
+      return command.row == caretRow && command.column == caretCol && command.tile.attributes == theme.highlight
+    }
+
+    if let caretTile = caretTile {
+      XCTAssertEqual(String(caretTile.tile.character), "b")
+    } else {
+      let fallback = commands.first { command in
+        return command.tile.attributes == theme.highlight && String(command.tile.character) == "b"
+      }
+      XCTAssertNotNil(fallback)
+      if let fallback = fallback {
+        XCTAssertEqual(fallback.row, caretRow)
+        XCTAssertEqual(fallback.column, caretCol)
+      }
+    }
+  }
+
   func testMessageBoxControllerHandlesInputAndDismissal () {
     let theme      = Theme.codex
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
@@ -183,6 +257,63 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
 
     controller.present(title: "Notice", messageLines: ["Testing"], buttons: buttons)
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertTrue(controller.handle(token: .escape))
+    XCTAssertFalse(controller.isPresenting)
+    XCTAssertEqual(scene.overlays.count, initialOverlays.count)
+    XCTAssertEqual(scene.focusChain.active, initialFocus)
+  }
+
+  func testTextEntryBoxControllerHandlesInputAndDismissal () {
+    let theme      = Theme.codex
+    let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
+    let focusChain = FocusChain()
+    focusChain.register(node: buffer.focusNode())
+    let scene      = Scene.standard(content: AnyWidget(buffer), configuration: SceneConfiguration(theme: theme), focusChain: focusChain)
+    let viewport   = BoxBounds(row: 1, column: 1, width: 60, height: 18)
+    let controller = TextEntryBoxController(scene: scene, viewportBounds: viewport)
+    let initialOverlays = scene.overlays
+    let initialFocus    = scene.focusChain.active
+    var capturedText    = ""
+
+    let buttons = [
+      TextEntryBoxButton(text: "Save", handler: { text in capturedText = text }),
+      TextEntryBoxButton(text: "Cancel")
+    ]
+
+    controller.present(title: "Input", prompt: "Name", text: "", buttons: buttons)
+
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertEqual(controller.currentText, "")
+    XCTAssertEqual(controller.caretIndex, 0)
+
+    XCTAssertTrue(controller.handle(token: .text("ab")))
+    XCTAssertEqual(controller.currentText, "ab")
+    XCTAssertEqual(controller.caretIndex, 2)
+
+    XCTAssertTrue(controller.handle(token: .cursor(.left)))
+    XCTAssertEqual(controller.caretIndex, 1)
+
+    XCTAssertTrue(controller.handle(token: .control(.BACKSPACE)))
+    XCTAssertEqual(controller.currentText, "b")
+    XCTAssertEqual(controller.caretIndex, 0)
+
+    XCTAssertTrue(controller.handle(token: .cursor(.right)))
+    XCTAssertEqual(controller.caretIndex, 1)
+
+    XCTAssertTrue(controller.handle(token: .control(.TAB)))
+    XCTAssertEqual(controller.activeButton, 1)
+
+    XCTAssertTrue(controller.handle(token: .control(.TAB)))
+    XCTAssertEqual(controller.activeButton, 0)
+
+    XCTAssertTrue(controller.handle(token: .control(.RETURN)))
+    XCTAssertEqual(capturedText, "b")
+    XCTAssertFalse(controller.isPresenting)
+    XCTAssertEqual(scene.overlays.count, initialOverlays.count)
+    XCTAssertEqual(scene.focusChain.active, initialFocus)
+
+    controller.present(title: "Input", prompt: "Name", text: "seed", buttons: buttons)
     XCTAssertTrue(controller.isPresenting)
     XCTAssertTrue(controller.handle(token: .escape))
     XCTAssertFalse(controller.isPresenting)

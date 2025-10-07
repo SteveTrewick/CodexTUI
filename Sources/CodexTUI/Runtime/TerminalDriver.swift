@@ -37,6 +37,11 @@ public final class TerminalDriver {
 
   public var onKeyEvent            : ( (TerminalInput.Token) -> Void )?
   public var onResize              : ( (BoxBounds) -> Void )?
+  public var textEntryBoxController: TextEntryBoxController? {
+    didSet {
+      textEntryBoxController?.update(viewportBounds: currentBounds)
+    }
+  }
   public var messageBoxController  : MessageBoxController? {
     didSet {
       messageBoxController?.update(viewportBounds: currentBounds)
@@ -139,6 +144,7 @@ public final class TerminalDriver {
   // Updates the backing surface when the terminal reports a new size and informs listeners.
   public func handleResize ( width: Int, height: Int ) {
     currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
+    textEntryBoxController?.update(viewportBounds: currentBounds)
     messageBoxController?.update(viewportBounds: currentBounds)
     menuController?.update(viewportBounds: currentBounds)
     onResize?(currentBounds)
@@ -203,6 +209,10 @@ public final class TerminalDriver {
   // Emits terminal tokens to the driver callbacks when active.
   private func route ( token: TerminalInput.Token ) {
     guard state == .running else { return }
+    if let controller = textEntryBoxController, controller.handle(token: token) {
+      redraw()
+      return
+    }
     if let controller = messageBoxController, controller.handle(token: token) {
       redraw()
       return
