@@ -234,8 +234,8 @@ final class DemoApplication {
         MessageBoxButton(text: "NO")
 
       ],
-      titleStyleOverride   : theme.highlight,
-      messageStyleOverrides: [theme.highlight, nil]
+      titleStyleOverride   : Theme.defaultWindowChrome,
+      messageStyleOverrides: []
     )
   }
 }
