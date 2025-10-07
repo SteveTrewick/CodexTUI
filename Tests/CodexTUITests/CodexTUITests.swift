@@ -183,7 +183,7 @@ final class CodexTUITests: XCTestCase {
       return
     }
 
-    let contentInterior = details.interior
+    let contentBounds   = details.bounds
     let separators      = details.separators
     let topSeparator    = separators.top
     let bottomSeparator = separators.bottom
@@ -196,10 +196,11 @@ final class CodexTUITests: XCTestCase {
     let bottomRuleCommands = commands.filter { command in
       return command.row == bottomSeparator && command.tile.attributes == theme.windowChrome
     }
+    XCTAssertFalse(bottomRuleCommands.isEmpty)
     XCTAssertTrue(bottomRuleCommands.contains { String($0.tile.character) == "─" })
 
-    let firstRow   = contentInterior.row
-    let secondRow  = min(firstRow + 1, contentInterior.maxRow)
+    let firstRow   = contentBounds.row
+    let secondRow  = min(firstRow + 1, contentBounds.maxRow)
     let firstLine  = commands.filter { $0.row == firstRow && $0.tile.attributes == overridePair }
     let secondLine = commands.filter { $0.row == secondRow && $0.tile.attributes == theme.contentDefault }
 
@@ -266,13 +267,13 @@ final class CodexTUITests: XCTestCase {
     let context = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
     let layout  = widget.layout(in: context)
     let commands = layout.flattenedCommands()
-    let interior = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
 
     guard let contentInfo = textEntryContentInterior(commands: commands, bounds: bounds) else {
       XCTFail("Expected text entry interior bounds to be available")
       return
     }
 
+    let contentBounds   = contentInfo.bounds
     let contentInterior = contentInfo.interior
     let topSeparator    = contentInfo.separators.top
     let bottomSeparator = contentInfo.separators.bottom
@@ -297,6 +298,11 @@ final class CodexTUITests: XCTestCase {
     }
     XCTAssertNotNil(rightBottomConnector)
 
+    let borderRowCommands = commands.filter { command in
+      return command.row == bottomSeparator && command.tile.attributes == theme.windowChrome
+    }
+    XCTAssertFalse(borderRowCommands.isEmpty)
+
     var caretRow = contentInterior.row
     if let prompt = widget.prompt, prompt.isEmpty == false { caretRow = min(caretRow + 1, contentInterior.maxRow) }
     let caretCol = min(contentInterior.column + widget.caretIndex, contentInterior.maxCol)
@@ -317,9 +323,9 @@ final class CodexTUITests: XCTestCase {
       }
     }
 
-    let buttonRow      = interior.maxRow
+    let buttonRow      = bottomSeparator + 1
     let edgeCommands   = commands.filter { command in
-      return command.row == buttonRow && command.column == interior.maxCol
+      return command.row == buttonRow && command.column == contentBounds.maxCol
     }
     XCTAssertFalse(edgeCommands.isEmpty)
     XCTAssertEqual(edgeCommands.last?.tile.attributes, theme.dimHighlight)
@@ -846,7 +852,13 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
   }
 
-  private func textEntryContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> (interior: BoxBounds, separators: (top: Int, bottom: Int))? {
+  private struct ModalContentArea {
+    let bounds     : BoxBounds
+    let interior   : BoxBounds
+    let separators : (top: Int, bottom: Int)
+  }
+
+  private func textEntryContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> ModalContentArea? {
     let leftColumn   = bounds.column
     let rightColumn  = bounds.maxCol
     let separatorRows = commands.compactMap { command -> Int? in
@@ -877,11 +889,11 @@ final class CodexTUITests: XCTestCase {
     let height        = max(0, contentBottom - contentTop + 1)
     guard height > 0 else { return nil }
 
-    let interior = BoxBounds(row: contentTop, column: bounds.column + 1, width: width, height: height)
-    return (interior, (top: topSeparator, bottom: bottomSeparator))
+    let contentBounds = BoxBounds(row: contentTop, column: bounds.column + 1, width: width, height: height)
+    return ModalContentArea(bounds: contentBounds, interior: contentBounds, separators: (top: topSeparator, bottom: bottomSeparator))
   }
 
-  private func messageContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> (interior: BoxBounds, separators: (top: Int, bottom: Int))? {
+  private func messageContentInterior ( commands: [RenderCommand], bounds: BoxBounds ) -> ModalContentArea? {
     let leftColumn    = bounds.column
     let rightColumn   = bounds.maxCol
     let separatorRows = commands.compactMap { command -> Int? in
@@ -915,8 +927,9 @@ final class CodexTUITests: XCTestCase {
     let height                 = max(0, contentBottom - clampedContentTop + 1)
     guard height > 0 else { return nil }
 
-    let interior = BoxBounds(row: clampedContentTop, column: bounds.column + 1, width: width, height: height)
-    return (interior, (top: topSeparator, bottom: bottomSeparator))
+    let contentBounds = BoxBounds(row: clampedContentTop, column: bounds.column + 1, width: width, height: height)
+    let interior      = contentBounds.inset(by: EdgeInsets(top: 0, leading: 1, bottom: 0, trailing: 1))
+    return ModalContentArea(bounds: contentBounds, interior: interior, separators: (top: topSeparator, bottom: bottomSeparator))
   }
 }
 
