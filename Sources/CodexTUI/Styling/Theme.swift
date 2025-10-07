@@ -49,10 +49,10 @@ public struct Theme : Equatable {
 public extension Theme {
   static let codex : Theme = Theme()
 
-  static let defaultMenuBar      : ColorPair = ColorPair(foreground: .white, background: .blue, style: [.bold])
-  static let defaultStatusBar    : ColorPair = ColorPair(foreground: .white, background: .magenta, style: [.bold])
+  static let defaultMenuBar      : ColorPair = ColorPair(foreground: .black, background: .white, style: [])
+  static let defaultStatusBar    : ColorPair = ColorPair(foreground: .black, background: .white, style: [])
   static let defaultWindowChrome : ColorPair = ColorPair(foreground: .white, background: .black)
   static let defaultContent      : ColorPair = ColorPair(foreground: .white, background: .black)
-  static let defaultHighlight    : ColorPair = ColorPair(foreground: .black, background: .yellow, style: [.bold])
-  static let defaultDimHighlight : ColorPair = ColorPair(foreground: .black, background: .yellow, style: [.dim])
+  static let defaultHighlight    : ColorPair = ColorPair(foreground: .black, background: .white,  style: [.bold])
+  static let defaultDimHighlight : ColorPair = ColorPair(foreground: .black, background: .white,  style: [.dim])
 }
