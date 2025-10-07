@@ -3,9 +3,9 @@ import Foundation
 import TerminalInput
 
 final class DemoApplication {
-  private let driver    : TerminalDriver
-  private let logBuffer : TextBuffer
-  private let menuBar   : MenuBar
+  private let driver         : TerminalDriver
+  private let logBuffer      : TextBuffer
+  private let menuController : MenuController
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -22,28 +22,29 @@ final class DemoApplication {
       lines         : [
         "CodexTUI quick start",
         "Press any key to log it.",
-        "Press ESC to exit."
+        "Press ESC to exit.",
+        "Alt+F opens the File menu."
       ],
       style         : theme.contentDefault,
       highlightStyle: theme.highlight,
       isInteractive : true
     )
 
-    menuBar = MenuBar(
+    let initialMenuBar = MenuBar(
       items : [
-          MenuItem ( title: "File",
-                     activationKey: .meta(.alt("f")),
-                     alignment    : .leading,
-                     isHighlighted: true
-          ),
-          MenuItem ( title: "Help",
-                     activationKey: .meta(.alt("h")),
-                     alignment    : .trailing,
-                     isHighlighted: true
-                   
-          )
+        MenuItem(
+          title         : "File",
+          activationKey : .meta(.alt("f")),
+          alignment     : .leading,
+          isHighlighted : true
+        ),
+        MenuItem(
+          title         : "Help",
+          activationKey : .meta(.alt("h")),
+          alignment     : .trailing,
+          isHighlighted : true
+        )
       ],
-      
       style            : theme.menuBar,
       highlightStyle   : theme.highlight,
       dimHighlightStyle: theme.dimHighlight
@@ -65,19 +66,34 @@ final class DemoApplication {
       environment : EnvironmentValues(contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
     )
 
+    let contentWidget = AnyWidget(logBuffer)
+
     let scene = Scene.standard(
-      menuBar     : menuBar,
-      content     : AnyWidget(logBuffer),
+      menuBar     : initialMenuBar,
+      content     : contentWidget,
       statusBar   : statusBar,
       configuration: configuration,
       focusChain  : focusChain
     )
 
-    driver = CodexTUI.makeDriver(scene: scene)
+    let runtimeConfiguration = RuntimeConfiguration()
+
+    menuController = MenuController(
+      scene          : scene,
+      menuBar        : initialMenuBar,
+      content        : contentWidget,
+      statusBar      : statusBar,
+      viewportBounds : runtimeConfiguration.initialBounds
+    )
+
+    driver = CodexTUI.makeDriver(scene: scene, configuration: runtimeConfiguration)
+    driver.menuController = menuController
 
     driver.onKeyEvent = { [weak self] token in
       self?.handle(token: token)
     }
+
+    configureMenuActions()
   }
 
   func run () {
@@ -91,12 +107,6 @@ final class DemoApplication {
   }
 
   private func handle ( token: TerminalInput.Token ) {
-    if let item = menuBar.items.first(where: { $0.matches(token: token) }) {
-      logBuffer.append(line: "Activated menu item: \(item.title)")
-      driver.redraw()
-      return
-    }
-
     switch token {
       case .escape        :
         driver.stop()
@@ -113,6 +123,60 @@ final class DemoApplication {
 
   private static func timestamp () -> String {
     return timestampFormatter.string(from: Date())
+  }
+
+  private func configureMenuActions () {
+    var menu = menuController.menuBar
+
+    if let fileIndex = menu.items.firstIndex(where: { $0.title == "File" }) {
+      menu.items[fileIndex].entries = [
+        MenuItem.Entry(
+          title          : "Log Timestamp",
+          acceleratorHint: "Ctrl+T",
+          action         : { [weak self] in self?.logTimestampEntry() }
+        ),
+        MenuItem.Entry(
+          title          : "Clear Log",
+          acceleratorHint: "Ctrl+K",
+          action         : { [weak self] in self?.clearLog() }
+        ),
+        MenuItem.Entry(
+          title          : "Quit Demo",
+          acceleratorHint: "Esc",
+          action         : { [weak self] in self?.quitDemo() }
+        )
+      ]
+    }
+
+    if let helpIndex = menu.items.firstIndex(where: { $0.title == "Help" }) {
+      menu.items[helpIndex].entries = [
+        MenuItem.Entry(
+          title          : "About CodexTUI",
+          acceleratorHint: "Ctrl+/",
+          action         : { [weak self] in self?.showAboutMessage() }
+        )
+      ]
+    }
+
+    menuController.menuBar = menu
+  }
+
+  private func logTimestampEntry () {
+    logBuffer.append(line: "Timestamp: \(DemoApplication.timestamp())")
+  }
+
+  private func clearLog () {
+    logBuffer.lines.removeAll()
+    logBuffer.scrollOffset = 0
+    logBuffer.append(line: "Log cleared")
+  }
+
+  private func quitDemo () {
+    driver.stop()
+  }
+
+  private func showAboutMessage () {
+    logBuffer.append(line: "CodexTUI demo - explore the menu with arrows and Return")
   }
 }
 
