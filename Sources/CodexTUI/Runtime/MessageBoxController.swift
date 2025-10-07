@@ -3,10 +3,11 @@ import TerminalInput
 
 public final class MessageBoxController {
   private struct State {
-    var title        : String
-    var messageLines : [String]
-    var buttons      : [MessageBoxButton]
-    var activeIndex  : Int
+    var title               : String
+    var messageLines        : [String]
+    var buttons             : [MessageBoxButton]
+    var activeIndex         : Int
+    var buttonStyleOverride : ColorPair?
   }
 
   public private(set) var scene           : Scene
@@ -30,7 +31,12 @@ public final class MessageBoxController {
     self.currentBounds  = nil
   }
 
-  public func present ( title: String, messageLines: [String], buttons: [MessageBoxButton] ) {
+  public func present (
+    title: String,
+    messageLines: [String],
+    buttons: [MessageBoxButton],
+    buttonStyleOverride: ColorPair? = nil
+  ) {
     guard buttons.isEmpty == false else { return }
 
     if storedOverlays == nil {
@@ -39,7 +45,13 @@ public final class MessageBoxController {
 
     previousFocus = scene.focusChain.active
 
-    let newState = State(title: title, messageLines: messageLines, buttons: buttons, activeIndex: 0)
+    let newState = State(
+      title             : title,
+      messageLines      : messageLines,
+      buttons           : buttons,
+      activeIndex       : 0,
+      buttonStyleOverride: buttonStyleOverride
+    )
     presentState(newState)
   }
 
@@ -129,9 +141,10 @@ public final class MessageBoxController {
       state.activeIndex = max(0, min(state.activeIndex, maxIndex))
     }
 
-    let bounds     = MessageBox.centeredBounds(title: state.title, messageLines: state.messageLines, buttons: state.buttons, in: viewportBounds)
-    let theme      = scene.configuration.theme
-    var titleStyle = theme.contentDefault
+    let bounds       = MessageBox.centeredBounds(title: state.title, messageLines: state.messageLines, buttons: state.buttons, in: viewportBounds)
+    let theme        = scene.configuration.theme
+    let buttonStyle  = state.buttonStyleOverride ?? theme.menuBar
+    var titleStyle   = theme.contentDefault
     titleStyle.style.insert(.bold)
     let widget = MessageBox(
       title             : state.title,
@@ -140,7 +153,7 @@ public final class MessageBoxController {
       activeButtonIndex : state.activeIndex,
       titleStyle        : titleStyle,
       contentStyle      : theme.contentDefault,
-      buttonStyle       : theme.dimHighlight,
+      buttonStyle       : buttonStyle,
       highlightStyle    : theme.highlight,
       borderStyle       : theme.windowChrome
     )
@@ -153,7 +166,13 @@ public final class MessageBoxController {
     scene.overlays = (storedOverlays ?? []) + [AnyWidget(overlay)]
     currentBounds  = bounds
     activeButton   = state.activeIndex
-    self.state     = State(title: state.title, messageLines: state.messageLines, buttons: state.buttons, activeIndex: state.activeIndex)
+    self.state     = State(
+      title             : state.title,
+      messageLines      : state.messageLines,
+      buttons           : state.buttons,
+      activeIndex       : state.activeIndex,
+      buttonStyleOverride: state.buttonStyleOverride
+    )
     isPresenting   = true
   }
 
