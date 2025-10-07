@@ -137,7 +137,7 @@ public enum SurfaceRenderer {
 
       sequences.append(AnsiSequence(rawValue: String(change.tile.character)))
 
-      if change.tile.attributes.style.requiresReset {
+      if change.tile.attributes != ColorPair() && change.tile.attributes.style.requiresReset {
         sequences.append(TerminalOutput.TextStyle.resetSequence())
       }
     }

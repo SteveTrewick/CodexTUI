@@ -47,7 +47,11 @@ public final class Scene {
       width  : bounds.width,
       height : bounds.height
     )
-    surface.clear()
+
+    let defaultAttributes = configuration.theme.contentDefault
+    let defaultTile       = SurfaceTile(character: " ", attributes: defaultAttributes)
+
+    surface.clear(with: defaultTile)
 
     let context     = layoutContext(for: bounds)
     let rootLayout  = rootWidget.layout(in: context)
