@@ -2,6 +2,9 @@
 
 CodexTUI is a Swift package for building composable terminal user interfaces (TUIs) that feel modern while still embracing the expressiveness of classic ANSI terminals. It layers ergonomic UI primitives on top of reliable input/output streams, letting you quickly assemble menus, status bars, overlays, and scrollable text panes that react to keyboard events in real time.
 
+# AI Notice - added by repo owner
+This is an experimental package under development with GPT Codex, it probbaly doesn't work yet and AFAICT some of this README (which it wrote) is wrong
+
 ## Why CodexTUI?
 
 Designing fluid TUIs in Swift traditionally requires juggling terminal control sequences, low-level input handling, and complex layout math. CodexTUI consolidates those responsibilities into clear abstractions:
