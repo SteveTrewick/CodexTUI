@@ -34,6 +34,8 @@ public final class TerminalDriver {
   private let input           : TerminalInput
   private let terminal        : TerminalOutput.Terminal
   private let terminalMode    : TerminalModeController
+  private let inputQueue      : DispatchQueue
+  private var inputSource     : DispatchSourceRead?
   private var surface         : Surface
   private var signalObserver  : SignalObserver
   private var currentBounds   : BoxBounds
@@ -48,6 +50,7 @@ public final class TerminalDriver {
     self.currentBounds   = configuration.initialBounds
     self.surface         = Surface(width: configuration.initialBounds.width, height: configuration.initialBounds.height)
     self.state           = .stopped
+    self.inputQueue      = DispatchQueue(label: "CodexTUI.TerminalDriver.Input")
   }
 
   // Boots the driver, taking ownership of terminal state and performing an initial render.
@@ -69,6 +72,7 @@ public final class TerminalDriver {
     state = .suspended
     terminalMode.restore()
     exitScreen()
+    cancelInputSource()
   }
 
   // Re-acquires the terminal and refreshes the display after a suspension.
@@ -77,6 +81,7 @@ public final class TerminalDriver {
 
     state = .running
     terminalMode.enterRawMode()
+    configureInput()
     enterScreen()
     redraw()
   }
@@ -89,6 +94,7 @@ public final class TerminalDriver {
     signalObserver.stop()
     terminalMode.restore()
     exitScreen()
+    cancelInputSource()
     input.dispatch = nil
   }
 
@@ -122,6 +128,36 @@ public final class TerminalDriver {
           break
       }
     }
+
+    guard inputSource == nil else { return }
+
+    let fileHandle     = FileHandle.standardInput
+    let fileDescriptor = fileHandle.fileDescriptor
+    let source         = DispatchSource.makeReadSource(fileDescriptor: fileDescriptor, queue: inputQueue)
+
+    source.setEventHandler { [weak self] in
+      guard let self = self else { return }
+
+      let available = Int(source.data)
+      guard available > 0 else { return }
+
+      let data = fileHandle.readData(ofLength: available)
+      guard data.isEmpty == false else { return }
+
+      self.input.enqueue(data)
+    }
+
+    source.setCancelHandler { [weak self] in
+      self?.inputSource = nil
+    }
+
+    inputSource = source
+    source.resume()
+  }
+
+  private func cancelInputSource () {
+    inputSource?.cancel()
+    inputSource = nil
   }
 
   // Subscribe to SIGWINCH so we can redraw when the user resizes the terminal window.
