@@ -31,7 +31,7 @@ public struct StatusBar : Widget {
     let row      = context.bounds.maxRow
 
     var leftColumn  = context.bounds.column
-    var rightColumn = context.bounds.maxCol
+    var rightColumn = context.bounds.maxCol + 1
 
     // Leading items push characters from the left edge.
     for item in items where item.alignment == .leading {
@@ -41,9 +41,9 @@ public struct StatusBar : Widget {
 
     // Trailing items render in reverse order to avoid overlapping as we walk from right to left.
     for item in items.reversed() where item.alignment == .trailing {
-      rightColumn -= item.text.count
-      commands.append(contentsOf: render(item: item, row: row, column: rightColumn))
-      rightColumn -= 1
+      let start = rightColumn - item.text.count
+      commands.append(contentsOf: render(item: item, row: row, column: start))
+      rightColumn = start - 1
     }
 
     return WidgetLayoutResult(bounds: BoxBounds(row: row, column: context.bounds.column, width: context.bounds.width, height: 1), commands: commands)

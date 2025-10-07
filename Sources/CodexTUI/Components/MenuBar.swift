@@ -44,7 +44,7 @@ public struct MenuBar : Widget {
     var commands = [RenderCommand]()
 
     var leftColumn  = context.bounds.column
-    var rightColumn = context.bounds.maxCol
+    var rightColumn = context.bounds.maxCol + 1
 
     // Leading entries are emitted left-to-right, adding a space between each title.
     for item in items where item.alignment == .leading {
@@ -54,9 +54,9 @@ public struct MenuBar : Widget {
 
     // Trailing entries are walked in reverse so the right edge is packed tightly without layout maths for preceding items.
     for item in items.reversed() where item.alignment == .trailing {
-      rightColumn -= item.title.count
-      commands.append(contentsOf: render(item: item, row: row, column: rightColumn))
-      rightColumn -= 2
+      let start = rightColumn - item.title.count
+      commands.append(contentsOf: render(item: item, row: row, column: start))
+      rightColumn = start - 2
     }
 
     return WidgetLayoutResult(bounds: BoxBounds(row: row, column: context.bounds.column, width: context.bounds.width, height: 1), commands: commands)
