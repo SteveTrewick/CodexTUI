@@ -1,6 +1,9 @@
 import Foundation
 import TerminalInput
 
+/// Model describing a button in the message box footer. Each button stores its display text,
+/// activation key and optional handler so the controller can perform the appropriate action when the
+/// user confirms the choice.
 public struct MessageBoxButton {
   public let text          : String
   public let activationKey : TerminalInput.ControlKey
@@ -13,7 +16,8 @@ public struct MessageBoxButton {
   }
 }
 
-// Renders a bordered message dialog with centred text and button row highlighting.
+/// Widget that renders a bordered message dialog with centred content and a highlighted button row.
+/// It is typically presented as a modal overlay to display alerts or confirmations.
 public struct MessageBox : Widget {
   public var title             : String
   public var messageLines      : [String]
@@ -50,6 +54,11 @@ public struct MessageBox : Widget {
     self.borderStyle       = borderStyle
   }
 
+  /// Lays out the dialog by delegating the structural work to `ModalDialogSurface`, which draws the
+  /// border, background and buttons. The routine then centres the title and message lines within the
+  /// returned interior bounds, inserting separators to visually distinguish the content from the
+  /// button row. Bounding calculations are clamped at every step so that even extremely small
+  /// viewports produce safe command lists.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let surface = ModalDialogSurface.layout(
       in               : context,

@@ -852,6 +852,110 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(scene.focusChain.active, initialFocus)
   }
 
+  func testSelectionListSurfaceRendersAcceleratorHints () {
+    let theme     = Theme.codex
+    let entries   = [
+      SelectionListEntry(title: "Open", acceleratorHint: "⌘O"),
+      SelectionListEntry(title: "Save", acceleratorHint: "⌘S")
+    ]
+    let bounds    = BoxBounds(row: 1, column: 1, width: 20, height: 6)
+    let focus     = FocusChain().snapshot()
+    let context   = LayoutContext(bounds: bounds, theme: theme, focus: focus)
+    let surface   = SelectionListSurface.layout(
+      entries        : entries,
+      selectionIndex : 0,
+      style          : theme.contentDefault,
+      highlightStyle : theme.highlight,
+      borderStyle    : theme.windowChrome,
+      in             : context
+    )
+    let commands  = surface.result.flattenedCommands()
+    let interior  = surface.interior
+
+    let highlightRow = interior.row
+    let hint         = "⌘O"
+    let hintStart    = interior.maxCol - hint.count + 1
+
+    for (offset, character) in hint.enumerated() {
+      let column  = hintStart + offset
+      let command = commands.last { $0.row == highlightRow && $0.column == column }
+      XCTAssertEqual(command?.tile.character, character)
+      XCTAssertEqual(command?.tile.attributes, theme.highlight)
+    }
+
+    let secondaryRow     = interior.row + 1
+    let secondaryCommand = commands.last { $0.row == secondaryRow && $0.column == interior.column }
+    XCTAssertEqual(secondaryCommand?.tile.attributes, theme.contentDefault)
+  }
+
+  func testSelectionListLayoutCentersTitleAndHighlightsSelection () {
+    let theme       = Theme.codex
+    let entries     = [
+      SelectionListEntry(title: "Alpha"),
+      SelectionListEntry(title: "Beta")
+    ]
+    let title       = "Select Item"
+    let size        = SelectionList.preferredSize(title: title, entries: entries)
+    let bounds      = BoxBounds(row: 1, column: 1, width: size.width, height: size.height)
+    let focus       = FocusChain().snapshot()
+    let context     = LayoutContext(bounds: bounds, theme: theme, focus: focus)
+    let selection   = SelectionList(
+      title          : title,
+      entries        : entries,
+      selectionIndex : 1,
+      titleStyle     : theme.highlight,
+      style          : theme.contentDefault,
+      highlightStyle : theme.highlight,
+      borderStyle    : theme.windowChrome
+    )
+    let layout      = selection.layout(in: context)
+    let commands    = layout.flattenedCommands()
+    let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let usableTitle = title.prefix(interior.width)
+    let offset      = max(0, (interior.width - usableTitle.count) / 2)
+    let startColumn = interior.column + offset
+    let titleRow    = interior.row
+
+    let titleCommand = commands.last { $0.row == titleRow && $0.column == startColumn }
+    XCTAssertEqual(titleCommand?.tile.character, usableTitle.first)
+    XCTAssertEqual(titleCommand?.tile.attributes, theme.highlight)
+
+    let entryStartRow   = interior.row + 1
+    let firstRowCommand = commands.last { $0.row == entryStartRow && $0.column == interior.column }
+    XCTAssertEqual(firstRowCommand?.tile.attributes, theme.contentDefault)
+
+    let highlightRow    = entryStartRow + 1
+    let highlightCommand = commands.last { $0.row == highlightRow && $0.column == interior.column }
+    XCTAssertEqual(highlightCommand?.tile.attributes, theme.highlight)
+  }
+
+  func testSelectionListControllerHandlesKeyboardInteractions () {
+    let content    = AnyWidget(Text("", origin: (row: 1, column: 1)))
+    let scene      = Scene.standard(content: content)
+    let controller = SelectionListController(scene: scene)
+    var activated  = [Int]()
+    let entries    = [
+      SelectionListEntry(title: "First", action: { activated.append(0) }),
+      SelectionListEntry(title: "Second", action: { activated.append(1) })
+    ]
+
+    controller.present(title: "Pick", entries: entries, selectionIndex: 1)
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertEqual(controller.activeIndex, 1)
+
+    XCTAssertTrue(controller.handle(token: .cursor(.down)))
+    XCTAssertEqual(controller.activeIndex, 0)
+
+    XCTAssertTrue(controller.handle(token: .control(.RETURN)))
+    XCTAssertEqual(activated, [0])
+    XCTAssertFalse(controller.isPresenting)
+
+    controller.present(title: "Pick", entries: entries)
+    XCTAssertTrue(controller.isPresenting)
+    XCTAssertTrue(controller.handle(token: .escape))
+    XCTAssertFalse(controller.isPresenting)
+  }
+
   private struct ModalContentArea {
     let bounds     : BoxBounds
     let interior   : BoxBounds

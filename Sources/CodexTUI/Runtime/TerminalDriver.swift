@@ -8,7 +8,7 @@ import Glibc
 import Darwin
 #endif
 
-// Controls how the driver initialises and interacts with the terminal.
+/// Controls how the driver initialises and interacts with the terminal.
 public struct RuntimeConfiguration {
   public var initialBounds      : BoxBounds
   /// Controls whether the driver switches to the terminal's alternate buffer.
@@ -23,8 +23,10 @@ public struct RuntimeConfiguration {
   }
 }
 
-// Orchestrates input handling, scene rendering and terminal lifecycle management.
+/// Orchestrates input handling, scene rendering and terminal lifecycle management. The driver takes
+/// ownership of the terminal while running and ensures the display is kept in sync with scene updates.
 public final class TerminalDriver {
+  /// Lifecycle states the driver can occupy.
   public enum State {
     case stopped
     case running
@@ -45,6 +47,11 @@ public final class TerminalDriver {
   public var messageBoxController  : MessageBoxController? {
     didSet {
       messageBoxController?.update(viewportBounds: currentBounds)
+    }
+  }
+  public var selectionListController: SelectionListController? {
+    didSet {
+      selectionListController?.update(viewportBounds: currentBounds)
     }
   }
   public var menuController        : MenuController? {
@@ -146,6 +153,7 @@ public final class TerminalDriver {
     currentBounds = BoxBounds(row: 1, column: 1, width: width, height: height)
     textEntryBoxController?.update(viewportBounds: currentBounds)
     messageBoxController?.update(viewportBounds: currentBounds)
+    selectionListController?.update(viewportBounds: currentBounds)
     menuController?.update(viewportBounds: currentBounds)
     onResize?(currentBounds)
     redraw()
@@ -214,6 +222,11 @@ public final class TerminalDriver {
       return
     }
     if let controller = messageBoxController, controller.handle(token: token) {
+      redraw()
+      return
+    }
+
+    if let controller = selectionListController, controller.handle(token: token) {
       redraw()
       return
     }

@@ -1,7 +1,7 @@
 import Foundation
 import TerminalOutput
 
-// Represents a single cell in the terminal buffer and the styling required to display it.
+/// Represents a single cell in the terminal buffer and the styling required to display it.
 public struct SurfaceTile : Equatable {
   public var character  : Character
   public var attributes : ColorPair
@@ -16,7 +16,8 @@ public extension SurfaceTile {
   static let blank : SurfaceTile = SurfaceTile(character: " ", attributes: ColorPair())
 }
 
-// Lightweight framebuffer used to track differences between frames for efficient redraws.
+/// Lightweight framebuffer used to track differences between frames for efficient redraws. Widgets
+/// render into this structure and the runtime converts the recorded mutations into ANSI sequences.
 public struct Surface {
   public private(set) var width             : Int
   public private(set) var height            : Int
@@ -61,12 +62,13 @@ public struct Surface {
     tiles[indexFor(row: row, column: column)] = tile
   }
 
-  // Snapshot the current frame so the diff can be computed after widgets finish rendering.
+  /// Snapshots the current frame so the diff can be computed after widgets finish rendering.
   public mutating func beginFrame () {
     previousFrameTiles = tiles
   }
 
-  // Produces a minimal list of changed tiles. When the surface dimensions change we fall back to a full refresh.
+  /// Produces a minimal list of changed tiles. When the surface dimensions change we fall back to a
+  /// full refresh so the terminal state remains consistent.
   public mutating func diff () -> [SurfaceChange] {
     guard needsFullRefresh == false else {
       needsFullRefresh = false
@@ -113,13 +115,14 @@ public struct Surface {
   }
 }
 
+/// Describes a single tile change emitted by the framebuffer diff.
 public struct SurfaceChange : Equatable {
   public let row    : Int
   public let column : Int
   public let tile   : SurfaceTile
 }
 
-// Converts surface mutations into terminal escape sequences.
+/// Converts surface mutations into terminal escape sequences so they can be written to the terminal.
 public enum SurfaceRenderer {
   public static func sequences ( for changes: [SurfaceChange] ) -> [AnsiSequence] {
     guard changes.isEmpty == false else { return [] }

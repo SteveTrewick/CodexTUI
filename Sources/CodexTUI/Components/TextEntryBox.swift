@@ -1,6 +1,8 @@
 import Foundation
 import TerminalInput
 
+/// Model representing an action button displayed below a text entry box. Buttons expose both their
+/// label and activation key so controllers can wire keyboard shortcuts to callbacks.
 public struct TextEntryBoxButton {
   public let text          : String
   public let activationKey : TerminalInput.ControlKey
@@ -13,6 +15,9 @@ public struct TextEntryBoxButton {
   }
 }
 
+/// Modal dialog style widget that combines a title, optional prompt, editable text field and action
+/// buttons. It builds on top of `ModalDialogSurface` to ensure consistent styling with other dialogs
+/// and adds caret rendering plus field centring logic.
 public struct TextEntryBox : Widget {
   public var title             : String
   public var prompt            : String?
@@ -61,6 +66,11 @@ public struct TextEntryBox : Widget {
     self.borderStyle       = borderStyle
   }
 
+  /// Lays out the text entry box by reusing `ModalDialogSurface` to draw the surrounding chrome and
+  /// button row. Once the surface returns interior bounds, the routine streams the title, prompt and
+  /// text field sequentially, inserting separators that mirror the dialog style. Calculations clamp
+  /// every intermediate rectangle to the available interior so the widget gracefully degrades in
+  /// cramped viewports.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let surface = ModalDialogSurface.layout(
       in               : context,

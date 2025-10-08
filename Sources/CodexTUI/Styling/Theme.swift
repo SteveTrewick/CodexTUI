@@ -1,7 +1,8 @@
 import Foundation
 import TerminalOutput
 
-// Couples optional foreground/background colours with a text style.
+/// Couples optional foreground/background colours with a text style. Widgets use the structure to
+/// describe how tiles should appear without dealing with terminal escape sequence details directly.
 public struct ColorPair : Equatable {
   public var foreground : TerminalOutput.Color?
   public var background : TerminalOutput.Color?
@@ -20,7 +21,8 @@ public func == ( lhs: ColorPair, rhs: ColorPair ) -> Bool {
   return foregroundEqual && backgroundEqual && lhs.style == rhs.style
 }
 
-// Groups a collection of related colour pairs for widgets to consume.
+/// Groups a collection of related colour pairs for widgets to consume. Themes allow applications to
+/// swap palettes without touching widget logic.
 public struct Theme : Equatable {
   public var menuBar        : ColorPair
   public var statusBar      : ColorPair

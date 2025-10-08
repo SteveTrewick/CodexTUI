@@ -1,7 +1,8 @@
 import Foundation
 import TerminalOutput
 
-// Configuration that shapes how the scene should be rendered and styled.
+/// Configuration that shapes how a scene should be rendered and styled. It captures the theme, the
+/// layout environment and whether standard chrome such as the menu and status bars should be shown.
 public struct SceneConfiguration {
   public var theme        : Theme
   public var environment  : EnvironmentValues
@@ -16,7 +17,8 @@ public struct SceneConfiguration {
   }
 }
 
-// The root object describing a hierarchy of widgets and overlays that can be rendered by the driver.
+/// Root object describing a hierarchy of widgets and overlays that can be rendered by the terminal
+/// driver. The scene owns the focus chain, current configuration and the widget tree entry point.
 public final class Scene {
   public var configuration : SceneConfiguration
   public var focusChain    : FocusChain
@@ -30,17 +32,22 @@ public final class Scene {
     self.overlays      = overlays
   }
 
-  // Adds a focusable widget to the scene-wide focus traversal chain.
+  /// Registers a focusable widget with the scene-wide focus chain so it participates in keyboard
+  /// traversal.
   public func registerFocusable ( _ widget: FocusableWidget ) {
     focusChain.register(node: widget.focusNode())
   }
 
-  // Generates a LayoutContext bound to the provided viewport, capturing the current focus and theme state.
+  /// Generates a `LayoutContext` bound to the provided viewport, capturing the current focus snapshot,
+  /// theme and environment. Widgets use this context when calculating their geometry.
   public func layoutContext ( for bounds: BoxBounds ) -> LayoutContext {
     return LayoutContext(bounds: bounds, theme: configuration.theme, focus: focusChain.snapshot(), environment: configuration.environment)
   }
 
-  // Materialises the widget hierarchy into render commands and forwards the resulting surface changes as terminal sequences.
+  /// Materialises the widget hierarchy into render commands and forwards the resulting surface changes
+  /// as terminal sequences. The method clears and resizes the surface, asks the root widget and any
+  /// overlays to produce their layout results, writes the commands into the framebuffer and finally
+  /// converts the diff into ANSI sequences suitable for terminal output.
   public func render ( into surface: inout Surface, bounds: BoxBounds ) -> [AnsiSequence] {
     surface.beginFrame()
     surface.resize(
@@ -76,7 +83,9 @@ public final class Scene {
 }
 
 public extension Scene {
-  // Convenience for composing a typical scene that contains a menu bar, body content and an optional status bar.
+  /// Convenience factory that assembles a scene containing the standard scaffold layout. Callers can
+  /// supply optional menu and status bars alongside the body content and overlays while still reusing
+  /// the default focus chain and configuration values.
   static func standard ( menuBar: MenuBar? = nil, content: AnyWidget, statusBar: StatusBar? = nil, configuration: SceneConfiguration = SceneConfiguration(), focusChain: FocusChain = FocusChain(), overlays: [AnyWidget] = [] ) -> Scene {
     let scaffold    = Scaffold(menuBar: menuBar, content: content, statusBar: statusBar)
     let rootWidget  = AnyWidget(scaffold)

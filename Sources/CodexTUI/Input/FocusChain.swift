@@ -1,6 +1,7 @@
 import Foundation
 
-// Unique identifier assigned to focusable widgets.
+/// Unique identifier assigned to focusable widgets. Hashable conformance allows identifiers to be
+/// stored in sets or dictionaries when managing focus state.
 public struct FocusIdentifier : Hashable, Equatable {
   public let rawValue : String
 
@@ -9,7 +10,8 @@ public struct FocusIdentifier : Hashable, Equatable {
   }
 }
 
-// Node stored inside the focus chain that carries runtime state.
+/// Node stored inside the focus chain, recording whether the widget is enabled and if it participates
+/// in tab traversal. The scene uses nodes to decide which identifier should be focused next.
 public struct FocusNode : Equatable {
   public let identifier : FocusIdentifier
   public var isEnabled  : Bool
@@ -22,7 +24,8 @@ public struct FocusNode : Equatable {
   }
 }
 
-// Tracks focusable widgets and the current focus position, providing tab-order traversal helpers.
+/// Tracks focusable widgets and the current focus position, providing tab-order traversal helpers.
+/// The chain maintains insertion order so traversal mirrors the order widgets were registered.
 public final class FocusChain {
   public private(set) var nodes  : [FocusNode]
   public private(set) var active : FocusIdentifier?
@@ -32,18 +35,18 @@ public final class FocusChain {
     self.active = nodes.first?.identifier
   }
 
-  // Captures the current focus state so layout code can respond without mutating the live chain.
+  /// Captures the current focus state so layout code can respond without mutating the live chain.
   public func snapshot () -> Snapshot {
     return Snapshot(nodes: nodes, active: active)
   }
 
-  // Explicitly focuses a particular identifier if it exists and is enabled.
+  /// Explicitly focuses a particular identifier if it exists and is enabled.
   public func focus ( identifier: FocusIdentifier ) {
     guard nodes.contains(where: { $0.identifier == identifier && $0.isEnabled }) else { return }
     active = identifier
   }
 
-  // Moves focus to the next enabled node, wrapping around to the start if necessary.
+  /// Moves focus to the next enabled node, wrapping around to the start if necessary.
   public func advance () {
     guard nodes.isEmpty == false else { return }
 
@@ -59,7 +62,7 @@ public final class FocusChain {
     self.active = enabled.first?.element.identifier
   }
 
-  // Moves focus to the previous enabled node, wrapping to the end when we walk past the start.
+  /// Moves focus to the previous enabled node, wrapping to the end when we walk past the start.
   public func retreat () {
     guard nodes.isEmpty == false else { return }
 
@@ -76,19 +79,22 @@ public final class FocusChain {
     self.active = enabled.last?.element.identifier
   }
 
-  // Adds a node if we have not seen the identifier before. The first registration becomes active automatically.
+  /// Adds a node to the focus chain if the identifier has not already been registered. The first
+  /// registration becomes the active focus target automatically so initial focus feels natural.
   public func register ( node: FocusNode ) {
     guard nodes.contains(where: { $0.identifier == node.identifier }) == false else { return }
     nodes.append(node)
     if active == nil { active = node.identifier }
   }
 
-  // Removes a node and gracefully falls back to the next available focus target.
+  /// Removes a node from the chain and gracefully falls back to the next available focus target.
   public func unregister ( identifier: FocusIdentifier ) {
     nodes.removeAll { $0.identifier == identifier }
     if active == identifier { active = nodes.first?.identifier }
   }
 
+  /// Immutable view of the focus chain used during layout. It prevents layout routines from mutating
+  /// the live chain while still providing access to the registered nodes and the active identifier.
   public struct Snapshot {
     public let nodes  : [FocusNode]
     public let active : FocusIdentifier?

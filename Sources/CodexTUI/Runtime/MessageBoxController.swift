@@ -1,7 +1,11 @@
 import Foundation
 import TerminalInput
 
+/// Manages presentation of `MessageBox` overlays including keyboard routing, focus restoration and
+/// styling overrides. Scenes interact with the controller instead of constructing overlays directly so
+/// dismissal and re-entry behaviour remain consistent.
 public final class MessageBoxController {
+  /// Snapshot of the data required to render a message box at a particular moment.
   private struct State {
     var title               : String
     var messageLines        : [String]

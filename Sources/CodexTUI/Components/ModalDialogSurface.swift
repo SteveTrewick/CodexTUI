@@ -1,5 +1,7 @@
 import Foundation
 
+/// Aggregates the results of laying out a modal dialog surface. It exposes the rendered border and
+/// button commands as well as the interior bounds and computed button row to downstream widgets.
 public struct ModalDialogSurfaceLayout {
   public var result    : WidgetLayoutResult
   public var interior  : BoxBounds
@@ -12,7 +14,15 @@ public struct ModalDialogSurfaceLayout {
   }
 }
 
+/// Namespace containing the shared rendering logic for modal dialog shells. Widgets such as
+/// `MessageBox` and `TextEntryBox` delegate to these helpers so they remain visually consistent.
 public enum ModalDialogSurface {
+  /// Lays out a modal dialog surface with an optional button row. The algorithm starts by invoking
+  /// the `Box` widget to draw the outer frame, captures its commands and derives the interior bounds
+  /// by insetting the box. When interior space exists it fills the background, then, if buttons are
+  /// present, it renders them along the bottom edge using either the default or highlight styling. The
+  /// function returns both the aggregated commands and metadata (interior bounds and button row) so
+  /// callers can continue layering content on top.
   public static func layout (
     in context        : LayoutContext,
     contentStyle      : ColorPair,

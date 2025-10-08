@@ -1,6 +1,7 @@
 import Foundation
 
-// Draws a rectangular border using box drawing characters.
+/// Primitive widget that paints an ANSI box border. The type is used both directly by scenes and
+/// as a building block for higher-level surfaces such as modal dialogs or selection lists.
 public struct Box : Widget {
   public var bounds : BoxBounds
   public var style  : ColorPair
@@ -10,6 +11,12 @@ public struct Box : Widget {
     self.style   = style
   }
 
+  /// Produces the render commands required to trace the four edges of the box. The routine walks
+  /// horizontally first to fill the top and bottom edges, then vertically to cover the sides. Each
+  /// loop appends `RenderCommand` values describing the character and styling for a cell so the
+  /// renderer can correctly resolve junctions when multiple boxes overlap. Corner glyphs are added
+  /// explicitly at the end to ensure the final appearance is deterministic regardless of the helper
+  /// character decisions.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     var commands = [RenderCommand]()
 

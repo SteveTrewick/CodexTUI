@@ -1,7 +1,11 @@
 import Foundation
 import TerminalInput
 
+/// Presents `TextEntryBox` overlays and handles text editing, caret positioning and button activation
+/// while preserving scene focus. The controller encapsulates the state machine required to turn raw
+/// terminal tokens into edits on the underlying text buffer.
 public final class TextEntryBoxController {
+  /// Snapshot of the text entry box configuration and runtime editing state.
   private struct State {
     var title               : String
     var prompt              : String?

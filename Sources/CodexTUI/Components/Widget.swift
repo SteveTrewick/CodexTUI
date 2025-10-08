@@ -1,6 +1,7 @@
 import Foundation
 
-// Atomic instruction describing a single tile mutation on the surface.
+/// Atomic instruction describing how to mutate a single tile on the backing surface. Widgets emit
+/// a stream of commands during layout and the renderer later applies them to the framebuffer.
 public struct RenderCommand : Equatable {
   public var row    : Int
   public var column : Int
@@ -13,7 +14,9 @@ public struct RenderCommand : Equatable {
   }
 }
 
-// Layout output produced by widgets, including their own commands and any nested child layouts.
+/// Output of a widget layout pass. It captures the widget's occupied bounds, the commands required
+/// to draw its content and the layout results of any nested child widgets so the render order can be
+/// preserved.
 public struct WidgetLayoutResult {
   public var bounds   : BoxBounds
   public var commands : [RenderCommand]
@@ -25,7 +28,9 @@ public struct WidgetLayoutResult {
     self.children = children
   }
 
-  // Recursively collects all commands from the subtree preserving draw order.
+  /// Recursively collects the commands produced by the widget and its children, returning them in
+  /// depth-first order so parents always render before descendants. This mirrors the natural paint
+  /// order of immediate mode rendering.
   public func flattenedCommands () -> [RenderCommand] {
     var combined = commands
 
@@ -37,12 +42,15 @@ public struct WidgetLayoutResult {
   }
 }
 
-// Core protocol implemented by all renderable components.
+/// Core protocol adopted by every renderable component. Implementations receive a `LayoutContext`
+/// describing their available space and return a `WidgetLayoutResult` detailing the commands required
+/// to draw themselves.
 public protocol Widget {
   func layout ( in context: LayoutContext ) -> WidgetLayoutResult
 }
 
-// Type erasure that allows heterogeneous widget trees.
+/// Type eraser that allows heterogeneous widget hierarchies. It stores the layout closure of the
+/// underlying widget and forwards invocations without exposing the concrete type to callers.
 public struct AnyWidget : Widget {
   private let layoutClosure : (LayoutContext) -> WidgetLayoutResult
 
@@ -50,18 +58,22 @@ public struct AnyWidget : Widget {
     self.layoutClosure = wrapped.layout(in:)
   }
 
+  /// Forwards the layout request to the wrapped widget. Using a stored closure keeps the type eraser
+  /// lightweight while still allowing the protocol requirement to be satisfied.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     return layoutClosure(context)
   }
 }
 
-// Protocol for widgets that participate in the focus chain.
+/// Protocol adopted by widgets that participate in focus traversal. The additional requirements make
+/// it possible for the focus chain to register, enable and identify interactive elements.
 public protocol FocusableWidget : Widget {
   var focusIdentifier : FocusIdentifier { get }
   func focusNode () -> FocusNode
 }
 
-// Protocol adopted by widgets capable of presenting overlays.
+/// Protocol adopted by widgets that can present overlay widgets such as modal dialogs. Returning an
+/// array allows the runtime to render multiple overlays in front of the base scene content.
 public protocol OverlayPresentingWidget : Widget {
   var presentedOverlays : [AnyWidget] { get }
 }
