@@ -13,6 +13,8 @@ Designing fluid TUIs in Swift traditionally requires juggling terminal control s
 - **Menu and status bars** deliver application chrome with keyboard-activated menu items and dynamic status indicators.
 - **Modal overlays** (message boxes, dropdown menus, selection lists, and text entry prompts) capture user intent without leaking keystrokes to the rest of the interface.
 - **Scrollable text buffers** make it simple to connect terminal streams or logs to interactive panes.
+- **Text IO channels** bridge focused text buffers to serial ports, pseudo terminals, or other UTF-8
+  streams while preserving CodexTUI's redraw discipline.
 - **Smart drawing logic** minimizes flicker by only redrawing what has actually changed, even when the terminal is resized.
 
 Together these features offer an ergonomic path to shipping full applications or enhancing existing command-line tools with richer interactivity.
@@ -74,23 +76,21 @@ Understanding these pillars will help you diagnose layout issues, extend widgets
 
 ## Quick Start Demo
 
-The following minimal example shows how to compose a scene with a menu bar, status bar, and scrolling text buffer using the core CodexTUI types. It also demonstrates how to drive the terminal directly via `TerminalDriver` and keep the application alive by running the current `RunLoop` until shutdown.
+The following example wires together the core CodexTUI widgets, attaches a `TextBuffer` to a `TextIOChannel`, and lets the `TextIOController` route keyboard text into the simulated channel. This mirrors the behaviour of the `CodexTUIDemo` target.
 
 ```swift
 import CodexTUI
 import Foundation
+import Dispatch
 import TerminalInput
 
 final class DemoApplication {
-  private let driver    : TerminalDriver
-  private let logBuffer : TextBuffer
-
-  private static let timestampFormatter : DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-  }()
+  private let driver           : TerminalDriver
+  private let logBuffer        : TextBuffer
+  private let textIOController : TextIOController
+  private let logChannel       : FileHandleTextIOChannel
+  private let channelWriter    : FileHandle
+  private let channelQueue     : DispatchQueue
 
   init () {
     let theme = Theme.codex
@@ -99,49 +99,36 @@ final class DemoApplication {
       identifier    : FocusIdentifier("log"),
       lines         : [
         "CodexTUI quick start",
-        "Press any key to log it.",
-        "Press ESC to exit."
+        "Press ESC to exit.",
+        "Type to echo through the channel."
       ],
       style         : theme.contentDefault,
       highlightStyle: theme.highlight,
       isInteractive : true
     )
 
-    let menuBar = MenuBar(
-      items            : [
-        MenuItem(title: "File", activationKey: .meta(.alt("f")), alignment: .leading, isHighlighted: true),
-        MenuItem(title: "Help", activationKey: .meta(.alt("h")), alignment: .trailing)
-      ],
-      style            : theme.menuBar,
-      highlightStyle   : theme.highlight,
-      dimHighlightStyle: theme.dimHighlight
+    let pipe = Pipe()
+    channelWriter = pipe.fileHandleForWriting
+    logChannel    = FileHandleTextIOChannel(
+      readHandle : pipe.fileHandleForReading,
+      writeHandle: pipe.fileHandleForWriting
     )
-
-    let statusBar = StatusBar(
-      items: [
-        StatusItem(text: "ESC closes the demo"),
-        StatusItem(text: DemoApplication.timestamp(), alignment: .trailing)
-      ],
-      style: theme.statusBar
-    )
+    logBuffer.attach(channel: logChannel)
+    channelQueue = DispatchQueue(label: "Demo.Channel")
 
     let focusChain = FocusChain()
     focusChain.register(node: logBuffer.focusNode())
 
-    let configuration = SceneConfiguration(
-      theme       : theme,
-      environment : EnvironmentValues(contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
+    let scene = Scene.standard(
+      content    : AnyWidget(logBuffer),
+      configuration: SceneConfiguration(theme: theme),
+      focusChain : focusChain
     )
 
-    let scene = Scene.standard(
-      menuBar     : menuBar,
-      content     : AnyWidget(logBuffer),
-      statusBar   : statusBar,
-      configuration: configuration,
-      focusChain  : focusChain
-    )
+    textIOController = TextIOController(scene: scene, buffers: [logBuffer])
 
     driver = CodexTUI.makeDriver(scene: scene)
+    driver.textIOController = textIOController
 
     driver.onKeyEvent = { [weak self] token in
       self?.handle(token: token)
@@ -149,6 +136,9 @@ final class DemoApplication {
   }
 
   func run () {
+    logChannel.start()
+    seedDemoChannel()
+
     driver.start()
 
     let runLoop = RunLoop.current
@@ -156,25 +146,33 @@ final class DemoApplication {
     while driver.state != .stopped {
       _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
     }
+
+    logChannel.stop()
   }
 
   private func handle ( token: TerminalInput.Token ) {
-    switch token {
-      case .escape                  :
-        driver.stop()
-
-      case .text(let string)                   :
-        guard string.count == 1, let character = string.first else { return }
-        logBuffer.append(line: "Key pressed: \(character)")
-        driver.redraw()
-
-      default                       :
-        break
+    if case .escape = token {
+      driver.stop()
     }
   }
 
-  private static func timestamp () -> String {
-    return timestampFormatter.string(from: Date())
+  private func seedDemoChannel () {
+    let messages = [
+      "Connecting to simulated device...",
+      "Connection established.",
+      "Try typing to see echoed text."
+    ]
+
+    for (index, message) in messages.enumerated() {
+      channelQueue.asyncAfter(deadline: .now() + .milliseconds(350 * index)) { [weak self] in
+        self?.writeToChannel("\(message)\n")
+      }
+    }
+  }
+
+  private func writeToChannel ( _ text: String ) {
+    guard let data = text.data(using: .utf8) else { return }
+    channelWriter.write(data)
   }
 }
 
@@ -183,11 +181,27 @@ DemoApplication().run()
 
 This sample demonstrates:
 
-- Instantiating `MenuBar` and `StatusBar` with the active theme's colour pairs.
-- Registering a focusable `TextBuffer` and embedding it inside a standard `Scene`.
-- Bootstrapping a `TerminalDriver` using `CodexTUI.makeDriver(scene:)`.
-- Responding to keyboard events manually, including triggering redraws and graceful shutdown.
+- Attaching a `TextBuffer` to a `TextIOChannel` via `attach(channel:)` so it streams decoded UTF-8
+  fragments.
+- Registering the buffer with `TextIOController`, then assigning the controller to
+  `TerminalDriver.textIOController` so keyboard text reaches the active channel.
+- Seeding the channel with background messages while allowing user input to echo through the same
+  file handle.
 - Keeping the process alive by pumping the current `RunLoop` until the driver reports `.stopped`.
+
+## Binding Text Buffers to Live Text IO
+
+1. Create or obtain an object that conforms to `TextIOChannel`.
+2. Call `attach(channel:lineSeparator:)` on the `TextBuffer` you want to stream into. The buffer will
+   append fragments and request redraws whenever data arrives.
+3. Register the buffer with a `TextIOController` and assign the controller to
+   `TerminalDriver.textIOController`. When the buffer has focus, `.text` tokens are forwarded to the
+   channel.
+4. Start the channel (for `FileHandleTextIOChannel` this sets up the `DispatchSourceRead`).
+
+`FileHandleTextIOChannel` is a ready-made adapter for serial ports, pseudo terminals, or other
+`FileHandle` based streams. It reads inbound bytes on a background queue, decodes them as UTF-8, and
+delivers fragments to the buffer.
 
 ## Building and Running CodexTUIDemo
 
