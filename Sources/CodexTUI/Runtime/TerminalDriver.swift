@@ -59,6 +59,12 @@ public final class TerminalDriver {
       menuController?.update(viewportBounds: currentBounds)
     }
   }
+  public var textIOController      : TextIOController? {
+    didSet {
+      oldValue?.onNeedsRedraw = nil
+      textIOController?.onNeedsRedraw = { [weak self] in self?.redraw() }
+    }
+  }
 
   private let input               : TerminalInput
   private let terminal            : TerminalOutput.Terminal
@@ -233,6 +239,10 @@ public final class TerminalDriver {
 
     if let controller = menuController, controller.handle(token: token) {
       redraw()
+      return
+    }
+
+    if let controller = textIOController, controller.handle(token: token) {
       return
     }
 

@@ -1,5 +1,6 @@
 import CodexTUI
 import Foundation
+import Dispatch
 import TerminalInput
 
 /// Minimal interactive application that wires together controllers to showcase CodexTUI features.
@@ -9,6 +10,10 @@ final class DemoApplication {
   private let menuController         : MenuController
   private let messageBoxController   : MessageBoxController
   private let textEntryBoxController : TextEntryBoxController
+  private let textIOController       : TextIOController
+  private let logChannel             : FileHandleTextIOChannel
+  private let channelWriter          : FileHandle
+  private let channelQueue           : DispatchQueue
 
   private static let timestampFormatter : DateFormatter = {
     let formatter = DateFormatter()
@@ -32,6 +37,15 @@ final class DemoApplication {
       highlightStyle: theme.highlight,
       isInteractive : true
     )
+
+    let pipe = Pipe()
+    channelWriter = pipe.fileHandleForWriting
+    logChannel    = FileHandleTextIOChannel(
+      readHandle : pipe.fileHandleForReading,
+      writeHandle: pipe.fileHandleForWriting
+    )
+    logBuffer.attach(channel: logChannel)
+    channelQueue = DispatchQueue(label: "CodexTUIDemo.Channel")
 
     let initialMenuBar = MenuBar(
       items : [
@@ -99,10 +113,16 @@ final class DemoApplication {
       viewportBounds : runtimeConfiguration.initialBounds
     )
 
+    textIOController = TextIOController(
+      scene  : scene,
+      buffers: [logBuffer]
+    )
+
     driver = CodexTUI.makeDriver(scene: scene, configuration: runtimeConfiguration)
     driver.menuController        = menuController
     driver.messageBoxController  = messageBoxController
     driver.textEntryBoxController = textEntryBoxController
+    driver.textIOController      = textIOController
 
     driver.onKeyEvent = { [weak self] token in
       self?.handle(token: token)
@@ -112,6 +132,9 @@ final class DemoApplication {
   }
 
   func run () {
+    logChannel.start()
+    seedDemoChannel()
+
     driver.start()
 
     let runLoop = RunLoop.current
@@ -119,17 +142,14 @@ final class DemoApplication {
     while driver.state != .stopped {
       _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
     }
+
+    logChannel.stop()
   }
 
   private func handle ( token: TerminalInput.Token ) {
     switch token {
       case .escape        :
         driver.stop()
-
-      case .text(let string)                   :
-        guard string.count == 1, let character = string.first else { break }
-        logBuffer.append(line: "Key pressed: \(character)")
-        driver.redraw()
 
       default                       :
         break
@@ -216,6 +236,7 @@ final class DemoApplication {
     logBuffer.lines.removeAll()
     logBuffer.scrollOffset = 0
     logBuffer.append(line: "Log cleared")
+    logBuffer.attach(channel: logChannel)
   }
 
   private func quitDemo () {
@@ -223,7 +244,6 @@ final class DemoApplication {
   }
 
   private func showAboutMessage () {
-    let theme = messageBoxController.scene.configuration.theme
     messageBoxController.present(
       title       : "About CodexTUI",
       messageLines: [
@@ -239,6 +259,27 @@ final class DemoApplication {
       messageStyleOverrides: []
     )
   }
+
+  private func seedDemoChannel () {
+    let messages = [
+      "Connecting to simulated serial device...",
+      "Connection established.",
+      "Type to echo text through the channel.",
+      "Menu > File > Log Timestamp writes directly to the buffer."
+    ]
+
+    for (index, message) in messages.enumerated() {
+      channelQueue.asyncAfter(deadline: .now() + .milliseconds(400 * index)) { [weak self] in
+        self?.writeToChannel("\(message)\n")
+      }
+    }
+  }
+
+  private func writeToChannel ( _ text: String ) {
+    guard let data = text.data(using: .utf8) else { return }
+    channelWriter.write(data)
+  }
 }
 
-DemoApplication().run()
+let application = DemoApplication()
+application.run()
