@@ -9,7 +9,7 @@ This is an experimental package under development with GPT Codex, it probbaly do
 
 Designing fluid TUIs in Swift traditionally requires juggling terminal control sequences, low-level input handling, and complex layout math. CodexTUI consolidates those responsibilities into clear abstractions:
 
-- **Declarative components** such as `Box`, `List`, `Button`, and `Text` form the foundation for larger experiences.
+- **Declarative components** such as `MenuBar`, `SelectionList`, `StatusBar`, `Text`, `Box`, and `Overlay` form the foundation for larger experiences.
 - **Menu and status bars** deliver application chrome with keyboard-activated menu items and dynamic status indicators.
 - **Modal overlays** (message boxes, dropdown menus, selection lists, and text entry prompts) capture user intent without leaking keystrokes to the rest of the interface.
 - **Scrollable text buffers** make it simple to connect terminal streams or logs to interactive panes.
