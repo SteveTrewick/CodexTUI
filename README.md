@@ -190,6 +190,36 @@ This sample demonstrates:
   file handle.
 - Keeping the process alive by pumping the current `RunLoop` until the driver reports `.stopped`.
 
+## Runtime Controllers
+
+CodexTUI's runtime controllers encapsulate the behaviour behind menus, modal overlays, and interactive text so you can wire them into a scene without duplicating state machines. Each controller lives in `Sources/CodexTUI/Runtime/`:
+
+- [`MenuController`](Sources/CodexTUI/Runtime/MenuController.swift) orchestrates menu bar focus, overlay creation, and keyboard routing while remembering the previously focused widget.【F:Sources/CodexTUI/Runtime/MenuController.swift†L4-L140】
+- [`MessageBoxController`](Sources/CodexTUI/Runtime/MessageBoxController.swift) presents `MessageBox` overlays, tracks the highlighted button, and restores focus and overlays after dismissal.【F:Sources/CodexTUI/Runtime/MessageBoxController.swift†L4-L199】
+- [`SelectionListController`](Sources/CodexTUI/Runtime/SelectionListController.swift) renders scrollable `SelectionList` overlays, handles arrow-key navigation, and keeps the user's place when the viewport changes.【F:Sources/CodexTUI/Runtime/SelectionListController.swift†L4-L188】
+- [`TextEntryBoxController`](Sources/CodexTUI/Runtime/TextEntryBoxController.swift) powers modal text prompts by managing caret edits, button activation, and live redraw requests.【F:Sources/CodexTUI/Runtime/TextEntryBoxController.swift†L4-L244】
+- [`TextIOController`](Sources/CodexTUI/Runtime/TextIOController.swift) delivers keyboard `.text` tokens to the focused interactive buffer and schedules redraws whenever a registered buffer reports new output.【F:Sources/CodexTUI/Runtime/TextIOController.swift†L4-L53】
+
+The demo target attaches each controller to `TerminalDriver` immediately after creating the `Scene` so the driver can forward key events and resize notifications to the appropriate handler:
+
+```swift
+driver.menuController          = menuController
+driver.messageBoxController    = messageBoxController
+driver.selectionListController = selectionListController
+driver.textEntryBoxController  = textEntryBoxController
+driver.textIOController        = textIOController
+```
+【F:Sources/CodexTUIDemo/main.swift†L316-L351】
+
+To reproduce the showcase behaviour in your own application:
+
+1. Build the `Scene`, menu bar, status bar, and focus chain for your layout just as the demo does before instantiating any controller.【F:Sources/CodexTUIDemo/main.swift†L288-L314】
+2. Create one instance of each controller, passing the shared `Scene` and initial viewport bounds so they can generate overlays sized to the terminal.【F:Sources/CodexTUIDemo/main.swift†L316-L341】
+3. Immediately assign the controller instances to the corresponding properties on `TerminalDriver`; the driver invokes `update(viewportBounds:)` and registers redraw callbacks as soon as those properties change.【F:Sources/CodexTUIDemo/main.swift†L345-L358】【F:Sources/CodexTUI/Runtime/TerminalDriver.swift†L32-L91】
+4. When the terminal resizes, forward the new bounds to each controller (the driver does this automatically through its `handleResize` pipeline, and the demo also updates cached bounds for later overlay creation).【F:Sources/CodexTUIDemo/main.swift†L644-L650】【F:Sources/CodexTUI/Runtime/TerminalDriver.swift†L92-L154】
+
+Following these steps ensures menus, message boxes, selection lists, text prompts, and live text IO react just like the bundled showcase.
+
 ## Binding Text Buffers to Live Text IO
 
 1. Create or obtain an object that conforms to `TextIOChannel`.
