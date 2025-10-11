@@ -24,11 +24,12 @@ Together these features offer an ergonomic path to shipping full applications or
 ```
 Sources/
 ├── CodexTUI/        // Core UI primitives, layout helpers, and rendering logic
-├── TerminalInput/   // Abstractions around keyboard input, key chords, and focus management
-└── TerminalOutput/  // Terminal drawing helpers, color/state tracking, and diffing
+└── CodexTUIDemo/    // Executable target showcasing CodexTUI features end-to-end
 Tests/
 └── CodexTUITests/   // Unit and integration coverage for layout, rendering, and input handling
 ```
+
+`TerminalInput` and `TerminalOutput` are integrated via Swift Package Manager dependencies as declared in `Package.swift`.
 
 Each component is designed to be small and composable so the framework resembles a fluent DSL while remaining easy to extend.
 
