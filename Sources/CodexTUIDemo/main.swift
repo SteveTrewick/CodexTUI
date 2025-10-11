@@ -13,6 +13,65 @@ struct ShowcaseWorkspace : Widget {
   var theme        : Theme
   var instructions : [String]
 
+  private func wrapInstruction ( _ line: String, width: Int ) -> [String] {
+    guard width > 0 else { return [] }
+
+    var fragments = [String]()
+    var start     = line.startIndex
+
+    while start < line.endIndex {
+      while start < line.endIndex && line[start].isWhitespace {
+        start = line.index(after: start)
+      }
+
+      guard start < line.endIndex else { break }
+
+      let limit = line.index(start, offsetBy: width, limitedBy: line.endIndex) ?? line.endIndex
+      var end   = limit
+
+      if limit < line.endIndex {
+        var search = limit
+        var found  = false
+
+        while search > start {
+          search = line.index(before: search)
+
+          if line[search].isWhitespace {
+            end   = search
+            found = true
+            break
+          }
+        }
+
+        if found {
+          let fragment = line[start..<end]
+
+          if !fragment.isEmpty {
+            fragments.append(String(fragment))
+          }
+
+          start = line.index(after: end)
+
+          while start < line.endIndex && line[start].isWhitespace {
+            start = line.index(after: start)
+          }
+
+          continue
+        }
+      }
+
+      let fragment = line[start..<end]
+
+      if !fragment.isEmpty {
+        fragments.append(String(fragment))
+      }
+
+      start = end
+    }
+
+    return fragments
+  }
+
   func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let rootBounds = context.bounds
     let interior   = rootBounds.inset(by: context.environment.contentInsets)
@@ -100,10 +159,26 @@ struct ShowcaseWorkspace : Widget {
 
       for line in instructions {
         guard currentRow <= maxRow else { break }
-        let clamped = String(line.prefix(usableWidth))
-        let text    = Text(clamped, origin: (row: currentRow, column: insetCol), style: bodyStyle)
-        children.append(text.layout(in: panelContext))
-        currentRow += 1
+
+        let fragments = wrapInstruction(line, width: usableWidth)
+
+        if fragments.isEmpty {
+          guard usableWidth > 0 && currentRow <= maxRow else { continue }
+
+          let text = Text("", origin: (row: currentRow, column: insetCol), style: bodyStyle)
+          children.append(text.layout(in: panelContext))
+          currentRow += 1
+
+          continue
+        }
+
+        for fragment in fragments {
+          guard currentRow <= maxRow else { break }
+
+          let text = Text(fragment, origin: (row: currentRow, column: insetCol), style: bodyStyle)
+          children.append(text.layout(in: panelContext))
+          currentRow += 1
+        }
       }
     }
 
