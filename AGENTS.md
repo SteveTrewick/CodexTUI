@@ -8,7 +8,7 @@ build a swift based Terminal User Interface framework.
 - Build small, composable components that build up to the full framework
 
 # API
-The API should enable composable TUI with minimal setup code and especially minimal layout code.
+The API should enable declarative, composable TUI with minimal setup code and especially minimal layout code.
 
 # Code styling suggestions
 - the user likes enums, sets, option sets and generally terse code that is highly composable to the point of resembling a DSL
