@@ -57,83 +57,54 @@ private struct DemoWorkspace : ComposableWidget {
 }
 
 final class DemoApplication {
-  private var theme                    : Theme
-  private let focusChain               : FocusChain
-  private let logBuffer                : TextBuffer
-  private let scene                    : Scene
-  private let driver                   : TerminalDriver
-  private let textChannel              : FileHandleTextIOChannel
-  private let textIOController         : TextIOController
-  private let messageBoxController     : MessageBoxController
-  private let selectionListController  : SelectionListController
-  private let textEntryBoxController   : TextEntryBoxController
-  private let menuController           : MenuController
-  private let channelPipe              : Pipe
-  private var menuBar                  : MenuBar
-  private var statusBar                : StatusBar
-  private var contentWidget            : AnyWidget
-  private var backgroundTimer          : DispatchSourceTimer?
-  private var backgroundMessages       : [String]
-  private var backgroundMessageIndex   : Int
-  private var viewportBounds           : BoxBounds
+  private var theme                  : Theme
+  private let logBuffer              : TextBuffer
+  private let app                    : CodexApp
+  private let textChannel            : FileHandleTextIOChannel
+  private let channelPipe            : Pipe
+  private var backgroundTimer        : DispatchSourceTimer?
+  private var backgroundMessages     : [String]
+  private var backgroundMessageIndex : Int
 
   init () {
     theme                  = Theme.codex
-    focusChain             = FocusChain()
     logBuffer              = TextBuffer(identifier: FocusIdentifier("log"), lines: [], scrollOffset: 0, style: theme.contentDefault, highlightStyle: theme.highlight, isInteractive: true)
-    contentWidget          = AnyWidget(DemoWorkspace(theme: theme, logBuffer: logBuffer))
-    statusBar              = DemoApplication.makeStatusBar(theme: theme)
-    menuBar                = DemoApplication.makePlaceholderMenuBar(theme: theme)
     backgroundMessages     = DemoApplication.defaultBackgroundMessages()
     backgroundMessageIndex = 0
-    viewportBounds         = RuntimeConfiguration().initialBounds
     channelPipe            = Pipe()
 
-    let environment = EnvironmentValues(menuBarHeight: 1, statusBarHeight: 1, contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
-    let configuration = SceneConfiguration(theme: theme, environment: environment, showMenuBar: true, showStatusBar: true)
-
-    scene = Scene.standard(menuBar: menuBar, content: contentWidget, statusBar: statusBar, configuration: configuration, focusChain: focusChain)
-
-    textChannel            = FileHandleTextIOChannel(readHandle: channelPipe.fileHandleForReading, writeHandle: channelPipe.fileHandleForWriting)
-    driver                 = CodexTUI.makeDriver(scene: scene)
-    textIOController       = TextIOController(scene: scene, buffers: [logBuffer])
-    messageBoxController   = MessageBoxController(scene: scene, viewportBounds: viewportBounds)
-    selectionListController = SelectionListController(scene: scene, viewportBounds: viewportBounds)
-    textEntryBoxController = TextEntryBoxController(scene: scene, viewportBounds: viewportBounds, startWidth: 28)
-    menuController         = MenuController(scene: scene, menuBar: menuBar, content: contentWidget, statusBar: statusBar, viewportBounds: viewportBounds)
-    backgroundTimer        = nil
-
-    focusChain.register(node: logBuffer.focusNode())
-    scene.registerFocusable(logBuffer)
+    textChannel = FileHandleTextIOChannel(
+      readHandle : channelPipe.fileHandleForReading,
+      writeHandle: channelPipe.fileHandleForWriting
+    )
     logBuffer.attach(channel: textChannel)
 
-    menuBar = makeMenuBar()
-    menuController.menuBar = menuBar
+    let environment   = EnvironmentValues(menuBarHeight: 1, statusBarHeight: 1, contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
+    let configuration = SceneConfiguration(theme: theme, environment: environment, showMenuBar: true, showStatusBar: true)
+    let builder       = CodexApp.Builder(configuration: configuration, runtimeConfiguration: RuntimeConfiguration())
 
-    driver.menuController          = menuController
-    driver.messageBoxController    = messageBoxController
-    driver.selectionListController = selectionListController
-    driver.textEntryBoxController  = textEntryBoxController
-    driver.textIOController        = textIOController
+    builder.setContent(DemoWorkspace(theme: theme, logBuffer: logBuffer))
+    builder.statusBar      = DemoApplication.makeStatusBar(theme: theme)
+    builder.menuBar        = DemoApplication.makePlaceholderMenuBar(theme: theme)
+    builder.addTextBuffer(logBuffer)
+    builder.initialFocus = logBuffer.focusIdentifier
 
-    driver.onResize = { [weak self] bounds in
-      self?.handleResize(bounds: bounds)
-    }
+    app = builder.build()
+    backgroundTimer = nil
 
-    driver.onKeyEvent = { [weak self] token in
-      self?.handleUnhandled(token: token)
-    }
+    app.onUnhandledKey = { [weak self] token in self?.handleUnhandled(token: token) }
+    app.updateMenuBar(makeMenuBar())
   }
 
   func run () {
-    driver.start()
+    app.start()
     textChannel.start()
-    scene.focusChain.focus(identifier: logBuffer.focusIdentifier)
+    app.focus(identifier: logBuffer.focusIdentifier)
     emitIntroductoryMessages()
     startBackgroundMessages()
     presentWelcomeMessage()
 
-    while driver.state != .stopped {
+    while app.state != .stopped {
       _ = RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
     }
   }
@@ -250,14 +221,15 @@ final class DemoApplication {
       MessageBoxButton(text: "Open Commands", handler: { [weak self] in self?.presentCommandPalette() })
     ]
 
-    messageBoxController.present(
-      title                : "CodexTUI Showcase",
-      messageLines         : [
+    let request = CodexApp.MessageBoxRequest(
+      title        : "CodexTUI Showcase",
+      messageLines : [
         "This demo stitches together menus, overlays and live text IO.",
-        "Use the Demo menu or keyboard shortcuts to explore each feature." ],
-      buttons              : buttons
+        "Use the Demo menu or keyboard shortcuts to explore each feature."
+      ],
+      buttons      : buttons
     )
-    driver.redraw()
+    app.overlays.messageBox(request)
   }
 
   private func presentCommandPalette () {
@@ -268,12 +240,12 @@ final class DemoApplication {
       SelectionListEntry(title: "Clear log", acceleratorHint: "⌘K", action: { [weak self] in self?.clearLog() })
     ]
 
-    selectionListController.present(
+    let request = CodexApp.SelectionListRequest(
       title          : "Command Palette",
       entries        : entries,
       selectionIndex : 0
     )
-    driver.redraw()
+    app.overlays.selectionList(request)
   }
 
   private func promptForCustomMessage () {
@@ -282,19 +254,18 @@ final class DemoApplication {
       TextEntryBoxButton(text: "Cancel")
     ]
 
-    textEntryBoxController.present(
+    let request = CodexApp.TextEntryBoxRequest(
       title   : "Compose Message",
       prompt  : "Type a line to append to the log",
       text    : "",
       buttons : buttons
     )
-    driver.redraw()
+    app.overlays.textEntryBox(request)
   }
 
   private func handleCustomMessage ( _ text: String ) {
     guard text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { return }
     appendLog("User: \(text)")
-    driver.redraw()
   }
 
   private func presentAboutDialog () {
@@ -303,7 +274,7 @@ final class DemoApplication {
       MessageBoxButton(text: "Docs", handler: { [weak self] in self?.presentTipsMessage() })
     ]
 
-    messageBoxController.present(
+    let request = CodexApp.MessageBoxRequest(
       title        : "About CodexTUI",
       messageLines : [
         "CodexTUI delivers a composable Swift DSL for ANSI terminals.",
@@ -311,38 +282,33 @@ final class DemoApplication {
       ],
       buttons      : buttons
     )
-    driver.redraw()
+    app.overlays.messageBox(request)
   }
 
   private func presentTipsMessage () {
     let buttons = [MessageBoxButton(text: "Close")]
 
-    messageBoxController.present(
+    let request = CodexApp.MessageBoxRequest(
       title        : "Try These",
       messageLines : [
         "• Move between menu items with ← and →.",
         "• Scroll the selection list with ↑ and ↓.",
-        "• Type while the log has focus to stream characters." ],
+        "• Type while the log has focus to stream characters."
+      ],
       buttons      : buttons
     )
-    driver.redraw()
+    app.overlays.messageBox(request)
   }
 
   private func insertTimestamp () {
     let formatter = ISO8601DateFormatter()
     let timestamp = formatter.string(from: Date())
     appendLog("Timestamp: \(timestamp)")
-    driver.redraw()
   }
 
   private func clearLog () {
     logBuffer.lines.removeAll()
     appendLog("Log cleared.")
-    driver.redraw()
-  }
-
-  private func handleResize ( bounds: BoxBounds ) {
-    viewportBounds = bounds
   }
 
   private func handleUnhandled ( token: TerminalInput.Token ) {
@@ -357,12 +323,12 @@ final class DemoApplication {
   }
 
   private func shutdown () {
-    guard driver.state != .stopped else { return }
+    guard app.state != .stopped else { return }
     emitShutdownMessage()
     backgroundTimer?.cancel()
     backgroundTimer = nil
     textChannel.stop()
-    driver.stop()
+    app.stop()
   }
 }
 

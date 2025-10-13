@@ -11,6 +11,7 @@ Designing fluid TUIs in Swift traditionally requires juggling terminal control s
 
 - **Declarative components** such as `MenuBar`, `SelectionList`, `StatusBar`, `Text`, `Box`, and `Overlay` form the foundation for larger experiences.
 - **Menu and status bars** deliver application chrome with keyboard-activated menu items and dynamic status indicators.
+- **CodexApp builder** wires menus, status bars, overlays, focusables, and the terminal driver from declarative definitions so applications stay concise.
 - **Modal overlays** (message boxes, dropdown menus, selection lists, and text entry prompts) capture user intent without leaking keystrokes to the rest of the interface.
 - **Scrollable text buffers** make it simple to connect terminal streams or logs to interactive panes.
 - **Text IO channels** bridge focused text buffers to serial ports, pseudo terminals, or other UTF-8
@@ -101,118 +102,90 @@ Because containers understand the available space they forward appropriately siz
 
 ## Quick Start Demo
 
-The following example wires together the core CodexTUI widgets, attaches a `TextBuffer` to a `TextIOChannel`, and lets the `TextIOController` route keyboard text into the simulated channel. This mirrors the behaviour of the `CodexTUIDemo` target.
+`CodexApp` bundles the runtime controllers and driver wiring so you can concentrate on declarative layout and overlay definitions. The builder accepts menu bars, status bars, focusable text buffers, and overlay requests and returns a ready-to-run application object:
 
 ```swift
 import CodexTUI
 import Foundation
 import Dispatch
-import TerminalInput
 
 final class DemoApplication {
-  private let driver           : TerminalDriver
-  private let logBuffer        : TextBuffer
-  private let textIOController : TextIOController
-  private let logChannel       : FileHandleTextIOChannel
-  private let channelWriter    : FileHandle
-  private let channelQueue     : DispatchQueue
+  private let logBuffer : TextBuffer
+  private let pipe      : Pipe
+  private let channel   : FileHandleTextIOChannel
+  private let app       : CodexApp
 
   init () {
     let theme = Theme.codex
 
     logBuffer = TextBuffer(
       identifier    : FocusIdentifier("log"),
-      lines         : [
-        "CodexTUI quick start",
-        "Press ESC to exit.",
-        "Type to echo through the channel."
-      ],
+      lines         : ["CodexTUI quick start"],
       style         : theme.contentDefault,
       highlightStyle: theme.highlight,
       isInteractive : true
     )
 
-    let pipe = Pipe()
-    channelWriter = pipe.fileHandleForWriting
-    logChannel    = FileHandleTextIOChannel(
+    pipe = Pipe()
+    channel = FileHandleTextIOChannel(
       readHandle : pipe.fileHandleForReading,
       writeHandle: pipe.fileHandleForWriting
     )
-    logBuffer.attach(channel: logChannel)
-    channelQueue = DispatchQueue(label: "Demo.Channel")
+    logBuffer.attach(channel: channel)
 
-    let focusChain = FocusChain()
-    focusChain.register(node: logBuffer.focusNode())
-
-    let scene = Scene.standard(
-      content    : AnyWidget(logBuffer),
-      configuration: SceneConfiguration(theme: theme),
-      focusChain : focusChain
+    let environment = EnvironmentValues(
+      menuBarHeight : 1,
+      statusBarHeight: 1,
+      contentInsets : EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2)
+    )
+    let configuration = SceneConfiguration(
+      theme        : theme,
+      environment  : environment,
+      showMenuBar  : true,
+      showStatusBar: true
     )
 
-    textIOController = TextIOController(scene: scene, buffers: [logBuffer])
+    let builder = CodexApp.Builder(configuration: configuration)
+    builder.setContent(
+      OverlayStack {
+        Box(style: theme.windowChrome)
+        Padding(top: 1, leading: 2, bottom: 1, trailing: 2) {
+          logBuffer
+        }
+      }
+    )
+    builder.statusBar    = StatusBar(items: [StatusItem(text: "ESC Exit", alignment: .leading)], style: theme.statusBar)
+    builder.menuBar      = MenuBar(items: [], style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    builder.addTextBuffer(logBuffer)
+    builder.initialFocus = logBuffer.focusIdentifier
 
-    driver = CodexTUI.makeDriver(scene: scene)
-    driver.textIOController = textIOController
-
-    driver.onKeyEvent = { [weak self] token in
-      self?.handle(token: token)
+    app = builder.build()
+    app.onUnhandledKey = { [weak self] token in
+      if case .escape = token { self?.shutdown() }
     }
   }
 
   func run () {
-    logChannel.start()
-    seedDemoChannel()
+    app.start()
+    channel.start()
 
-    driver.start()
-
-    let runLoop = RunLoop.current
-
-    while driver.state != .stopped {
-      _ = runLoop.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
-    }
-
-    logChannel.stop()
+    app.overlays.messageBox(
+      CodexApp.MessageBoxRequest(
+        title        : "CodexTUI",
+        messageLines : ["Type to echo through the channel."],
+        buttons      : [MessageBoxButton(text: "Dismiss")]
+      )
+    )
   }
 
-  private func handle ( token: TerminalInput.Token ) {
-    if case .escape = token {
-      driver.stop()
-    }
-  }
-
-  private func seedDemoChannel () {
-    let messages = [
-      "Connecting to simulated device...",
-      "Connection established.",
-      "Try typing to see echoed text."
-    ]
-
-    for (index, message) in messages.enumerated() {
-      channelQueue.asyncAfter(deadline: .now() + .milliseconds(350 * index)) { [weak self] in
-        self?.writeToChannel("\(message)\n")
-      }
-    }
-  }
-
-  private func writeToChannel ( _ text: String ) {
-    guard let data = text.data(using: .utf8) else { return }
-    channelWriter.write(data)
+  private func shutdown () {
+    channel.stop()
+    app.stop()
   }
 }
-
-DemoApplication().run()
 ```
 
-This sample demonstrates:
-
-- Attaching a `TextBuffer` to a `TextIOChannel` via `attach(channel:)` so it streams decoded UTF-8
-  fragments.
-- Registering the buffer with `TextIOController`, then assigning the controller to
-  `TerminalDriver.textIOController` so keyboard text reaches the active channel.
-- Seeding the channel with background messages while allowing user input to echo through the same
-  file handle.
-- Keeping the process alive by pumping the current `RunLoop` until the driver reports `.stopped`.
+`CodexApp.OverlayPresenter` also exposes `selectionList` and `textEntryBox` helpers, allowing menu actions and background tasks to present overlays declaratively without touching controller APIs or calling `driver.redraw()` manually.
 
 ## Runtime Controllers
 
@@ -224,25 +197,9 @@ CodexTUI's runtime controllers encapsulate the behaviour behind menus, modal ove
 - [`TextEntryBoxController`](Sources/CodexTUI/Runtime/TextEntryBoxController.swift) powers modal text prompts by managing caret edits, button activation, and live redraw requests.【F:Sources/CodexTUI/Runtime/TextEntryBoxController.swift†L4-L244】
 - [`TextIOController`](Sources/CodexTUI/Runtime/TextIOController.swift) delivers keyboard `.text` tokens to the focused interactive buffer and schedules redraws whenever a registered buffer reports new output.【F:Sources/CodexTUI/Runtime/TextIOController.swift†L4-L53】
 
-The demo target attaches each controller to `TerminalDriver` immediately after creating the `Scene` so the driver can forward key events and resize notifications to the appropriate handler:
+`CodexApp` constructs these controllers behind the scenes and assigns them to `TerminalDriver`, so menu bars, modal overlays, and text IO react immediately without additional boilerplate.【F:Sources/CodexTUI/Runtime/CodexApp.swift†L173-L218】 The controllers remain public; advanced callers can access them through the `CodexApp` instance or instantiate their own copies when building bespoke runtimes.
 
-```swift
-driver.menuController          = menuController
-driver.messageBoxController    = messageBoxController
-driver.selectionListController = selectionListController
-driver.textEntryBoxController  = textEntryBoxController
-driver.textIOController        = textIOController
-```
-【F:Sources/CodexTUIDemo/main.swift†L316-L351】
-
-To reproduce the showcase behaviour in your own application:
-
-1. Build the `Scene`, menu bar, status bar, and focus chain for your layout just as the demo does before instantiating any controller.【F:Sources/CodexTUIDemo/main.swift†L288-L314】
-2. Create one instance of each controller, passing the shared `Scene` and initial viewport bounds so they can generate overlays sized to the terminal.【F:Sources/CodexTUIDemo/main.swift†L316-L341】
-3. Immediately assign the controller instances to the corresponding properties on `TerminalDriver`; the driver invokes `update(viewportBounds:)` and registers redraw callbacks as soon as those properties change.【F:Sources/CodexTUIDemo/main.swift†L345-L358】【F:Sources/CodexTUI/Runtime/TerminalDriver.swift†L32-L91】
-4. When the terminal resizes, forward the new bounds to each controller (the driver does this automatically through its `handleResize` pipeline, and the demo also updates cached bounds for later overlay creation).【F:Sources/CodexTUIDemo/main.swift†L644-L650】【F:Sources/CodexTUI/Runtime/TerminalDriver.swift†L92-L154】
-
-Following these steps ensures menus, message boxes, selection lists, text prompts, and live text IO react just like the bundled showcase.
+If you ever need to wire things manually, the implementation in `CodexApp` demonstrates the correct order: build the `Scene`, create each controller with shared bounds, assign them to the driver, and rely on the driver's resize pipeline to keep everything in sync.【F:Sources/CodexTUI/Runtime/CodexApp.swift†L133-L218】【F:Sources/CodexTUI/Runtime/TerminalDriver.swift†L32-L154】
 
 ## Binding Text Buffers to Live Text IO
 
