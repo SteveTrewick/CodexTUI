@@ -28,7 +28,6 @@ private struct DemoWorkspace : ComposableWidget {
               VStack(spacing: 1) {
                 Label("Live Text IO", style: highlightedHeaderStyle(), alignment: .center)
                 Label("Typed keys echo here via the TextIOController.", style: theme.contentDefault)
-                Spacer(minLength: 1)
                 logBuffer
               }
             }
