@@ -22,78 +22,6 @@ struct ShowcaseWorkspace : Widget {
   var theme        : Theme
   var instructions : [String]
 
-  //  Helper that wraps instruction text to the available column width so the
-  //  instructional panel renders without overflowing the border box.
-  private func wrapInstruction ( _ line: String, width: Int ) -> [String] {
-    guard width > 0 else { return [] }
-
-    var fragments = [String]()
-    var start     = line.startIndex
-
-    //  Walk the string once, slicing off visible fragments that fit inside the
-    //  panel. We manually traverse instead of delegating to Foundation so the
-    //  logic mirrors the renderer's single-width character grid.
-    while start < line.endIndex {
-      //  Skip leading whitespace so we do not emit empty fragments when the
-      //  instruction line begins with spaces.
-      while start < line.endIndex && line[start].isWhitespace {
-        start = line.index(after: start)
-      }
-
-      guard start < line.endIndex else { break }
-
-      //  Take an optimistic slice that fills the width. This becomes our
-      //  fallback if we cannot locate a word boundary to break on.
-      let limit = line.index(start, offsetBy: width, limitedBy: line.endIndex) ?? line.endIndex
-      var end   = limit
-
-      if limit < line.endIndex {
-        var search = limit
-        var found  = false
-
-        //  Scan backwards for the nearest whitespace so we can break at a
-        //  natural word boundary rather than splitting a word mid character.
-        while search > start {
-          search = line.index(before: search)
-
-          if line[search].isWhitespace {
-            end   = search
-            found = true
-            break
-          }
-        }
-
-        if found {
-          let fragment = line[start..<end]
-
-          if !fragment.isEmpty {
-            fragments.append(String(fragment))
-          }
-
-          //  Resume slicing just after the whitespace character we broke on to
-          //  avoid an infinite loop when encountering multiple spaces.
-          start = line.index(after: end)
-
-          while start < line.endIndex && line[start].isWhitespace {
-            start = line.index(after: start)
-          }
-
-          continue
-        }
-      }
-
-      let fragment = line[start..<end]
-
-      if !fragment.isEmpty {
-        fragments.append(String(fragment))
-      }
-
-      start = end
-    }
-
-    return fragments
-  }
-
   //  Layout orchestrates a two column view when there is enough terminal
   //  width: the log buffer on the left and the instruction panel on the right.
   //  When the terminal is too narrow only the log buffer is shown. Every
@@ -183,62 +111,8 @@ struct ShowcaseWorkspace : Widget {
         environment : childEnvironment
       )
 
-      //  Draw the panel border first so subsequent text is layered on top of the
-      //  framed background.
-      let border = Box(bounds: panelBounds, style: theme.windowChrome)
-      children.append(border.layout(in: panelContext))
-
-      let titleStyle : ColorPair = {
-        var style = theme.contentDefault
-        style.style.insert(.bold)
-        return style
-      }()
-
-      let bodyStyle = theme.contentDefault
-      //  insetRow/insetCol target the interior cell just inside the border,
-      //  while maxRow ensures we stop emitting text before hitting the bottom
-      //  edge of the frame.
-      let insetRow  = panelBounds.row + 1
-      let insetCol  = panelBounds.column + 2
-      let maxRow    = panelBounds.maxRow - 1
-      //  The panel dedicates two columns on each side to the frame and padding,
-      //  leaving the remaining interior for wrapped instructions.
-      let usableWidth = max(0, panelBounds.width - 4)
-
-      if insetRow <= maxRow {
-        let title = Text("CodexTUI Showcase", origin: (row: insetRow, column: insetCol), style: titleStyle)
-        children.append(title.layout(in: panelContext))
-      }
-
-      var currentRow = insetRow + 2
-
-      for line in instructions {
-        guard currentRow <= maxRow else { break }
-
-        //  Wrap each instruction line to the usable interior width so the
-        //  textual content adheres to the panel bounds.
-        let fragments = wrapInstruction(line, width: usableWidth)
-
-        if fragments.isEmpty {
-          guard usableWidth > 0 && currentRow <= maxRow else { continue }
-
-          let text = Text("", origin: (row: currentRow, column: insetCol), style: bodyStyle)
-          children.append(text.layout(in: panelContext))
-          currentRow += 1
-
-          continue
-        }
-
-        //  Emit each wrapped fragment on its own row, mimicking the TextBuffer
-        //  layout logic so instructions visually align with log entries.
-        for fragment in fragments {
-          guard currentRow <= maxRow else { break }
-
-          let text = Text(fragment, origin: (row: currentRow, column: insetCol), style: bodyStyle)
-          children.append(text.layout(in: panelContext))
-          currentRow += 1
-        }
-      }
+      let panel = Panel(title: "CodexTUI Showcase", bodyLines: instructions, theme: theme)
+      children.append(panel.layout(in: panelContext))
     }
 
     return WidgetLayoutResult(bounds: rootBounds, children: children)
