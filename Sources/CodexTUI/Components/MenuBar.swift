@@ -8,6 +8,76 @@ public enum MenuItemAlignment {
   case trailing
 }
 
+@resultBuilder
+public struct MenuItemBuilder {
+  public static func buildBlock ( _ components: [MenuItem]... ) -> [MenuItem] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildExpression ( _ expression: MenuItem ) -> [MenuItem] {
+    return [expression]
+  }
+
+  public static func buildExpression ( _ expression: [MenuItem] ) -> [MenuItem] {
+    return expression
+  }
+
+  public static func buildOptional ( _ component: [MenuItem]? ) -> [MenuItem] {
+    return component ?? []
+  }
+
+  public static func buildEither ( first component: [MenuItem] ) -> [MenuItem] {
+    return component
+  }
+
+  public static func buildEither ( second component: [MenuItem] ) -> [MenuItem] {
+    return component
+  }
+
+  public static func buildArray ( _ components: [[MenuItem]] ) -> [MenuItem] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildLimitedAvailability ( _ component: [MenuItem] ) -> [MenuItem] {
+    return component
+  }
+}
+
+@resultBuilder
+public struct MenuEntryBuilder {
+  public static func buildBlock ( _ components: [MenuItem.Entry]... ) -> [MenuItem.Entry] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildExpression ( _ expression: MenuItem.Entry ) -> [MenuItem.Entry] {
+    return [expression]
+  }
+
+  public static func buildExpression ( _ expression: [MenuItem.Entry] ) -> [MenuItem.Entry] {
+    return expression
+  }
+
+  public static func buildOptional ( _ component: [MenuItem.Entry]? ) -> [MenuItem.Entry] {
+    return component ?? []
+  }
+
+  public static func buildEither ( first component: [MenuItem.Entry] ) -> [MenuItem.Entry] {
+    return component
+  }
+
+  public static func buildEither ( second component: [MenuItem.Entry] ) -> [MenuItem.Entry] {
+    return component
+  }
+
+  public static func buildArray ( _ components: [[MenuItem.Entry]] ) -> [MenuItem.Entry] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildLimitedAvailability ( _ component: [MenuItem.Entry] ) -> [MenuItem.Entry] {
+    return component
+  }
+}
+
 /// Describes a single interactive menu bar item, including its accelerator token, alignment and
 /// dropdown entries. The structure is intentionally value-based so scenes can easily diff and update
 /// menu state.
@@ -41,6 +111,17 @@ public struct MenuItem : Equatable {
     self.entries       = entries
   }
 
+  public init ( title: String, activationKey: TerminalInput.Token, alignment: MenuItemAlignment = .leading, isHighlighted: Bool = false, isOpen: Bool = false, @MenuEntryBuilder entries: () -> [Entry] ) {
+    self.init(
+      title        : title,
+      activationKey: activationKey,
+      alignment    : alignment,
+      isHighlighted: isHighlighted,
+      isOpen       : isOpen,
+      entries      : entries()
+    )
+  }
+
   public func matches ( token: TerminalInput.Token ) -> Bool {
     return activationKey == token
   }
@@ -63,15 +144,29 @@ public func == ( lhs: MenuItem, rhs: MenuItem ) -> Bool {
 /// highlighting and left/right alignment rules for menu items.
 public struct MenuBar : Widget {
   public var items            : [MenuItem]
-  public var style            : ColorPair
-  public var highlightStyle   : ColorPair
-  public var dimHighlightStyle: ColorPair
+  public var barStyleOverride         : ColorPair?
+  public var highlightStyleOverride   : ColorPair?
+  public var dimHighlightStyleOverride: ColorPair?
 
   public init ( items: [MenuItem], style: ColorPair, highlightStyle: ColorPair, dimHighlightStyle: ColorPair ) {
-    self.items             = items
-    self.style             = style
-    self.highlightStyle    = highlightStyle
-    self.dimHighlightStyle = dimHighlightStyle
+    self.items                       = items
+    self.barStyleOverride            = style
+    self.highlightStyleOverride      = highlightStyle
+    self.dimHighlightStyleOverride   = dimHighlightStyle
+  }
+
+  public init ( items: [MenuItem], barStyle: ColorPair? = nil, highlightStyle: ColorPair? = nil, dimHighlightStyle: ColorPair? = nil ) {
+    self.items                       = items
+    self.barStyleOverride            = barStyle
+    self.highlightStyleOverride      = highlightStyle
+    self.dimHighlightStyleOverride   = dimHighlightStyle
+  }
+
+  public init ( barStyle: ColorPair? = nil, highlightStyle: ColorPair? = nil, dimHighlightStyle: ColorPair? = nil, @MenuItemBuilder items: () -> [MenuItem] ) {
+    self.items                       = items()
+    self.barStyleOverride            = barStyle
+    self.highlightStyleOverride      = highlightStyle
+    self.dimHighlightStyleOverride   = dimHighlightStyle
   }
 
   /// Renders the menu bar within the supplied bounds. The routine first paints a solid background
@@ -81,6 +176,9 @@ public struct MenuBar : Widget {
   /// item is rendered via `render(item:row:column:)`, which decides whether to use highlight colours
   /// based on the item's state.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
+    let barStyle        = barStyleOverride ?? context.theme.menuBar
+    let highlightStyle  = highlightStyleOverride ?? context.theme.highlight
+    let dimHighlight    = dimHighlightStyleOverride ?? context.theme.dimHighlight
     let row          = context.bounds.row
     let startColumn  = context.bounds.column
     let endColumn    = context.bounds.maxCol
@@ -96,7 +194,7 @@ public struct MenuBar : Widget {
             column: column,
             tile  : SurfaceTile(
               character : " ",
-              attributes: style
+              attributes: barStyle
             )
           )
         )
@@ -105,21 +203,21 @@ public struct MenuBar : Widget {
 
     // Leading entries are emitted left-to-right, adding a space between each title.
     for item in items where item.alignment == .leading {
-      commands.append(contentsOf: render(item: item, row: row, column: leftColumn))
+      commands.append(contentsOf: render(item: item, row: row, column: leftColumn, barStyle: barStyle, highlightStyle: highlightStyle, dimHighlightStyle: dimHighlight))
       leftColumn += item.title.count + 2
     }
 
     // Trailing entries are walked in reverse so the right edge is packed tightly without layout maths for preceding items.
     for item in items.reversed() where item.alignment == .trailing {
       let start = rightColumn - item.title.count
-      commands.append(contentsOf: render(item: item, row: row, column: start))
+      commands.append(contentsOf: render(item: item, row: row, column: start, barStyle: barStyle, highlightStyle: highlightStyle, dimHighlightStyle: dimHighlight))
       rightColumn = start - 2
     }
 
     return WidgetLayoutResult(bounds: BoxBounds(row: row, column: context.bounds.column, width: context.bounds.width, height: 1), commands: commands)
   }
 
-  private func render ( item: MenuItem, row: Int, column: Int ) -> [RenderCommand] {
+  private func render ( item: MenuItem, row: Int, column: Int, barStyle: ColorPair, highlightStyle: ColorPair, dimHighlightStyle: ColorPair ) -> [RenderCommand] {
     var commands = [RenderCommand]()
     let characters = Array(item.title)
 
@@ -130,9 +228,9 @@ public struct MenuBar : Widget {
       if item.isOpen {
         attributes = highlightStyle
       } else if isFirst {
-        attributes = highlightAttributes(for: item)
+        attributes = highlightAttributes(for: item, highlightStyle: highlightStyle, dimHighlightStyle: dimHighlightStyle)
       } else {
-        attributes = style
+        attributes = barStyle
       }
 
       // The first character is styled using either a dim or active highlight to mimic accelerator hints.
@@ -151,7 +249,7 @@ public struct MenuBar : Widget {
     return commands
   }
 
-  private func highlightAttributes ( for item: MenuItem ) -> ColorPair {
+  private func highlightAttributes ( for item: MenuItem, highlightStyle: ColorPair, dimHighlightStyle: ColorPair ) -> ColorPair {
     if item.isOpen { return highlightStyle }
     return item.isHighlighted ? highlightStyle : dimHighlightStyle
   }

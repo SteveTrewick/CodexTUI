@@ -6,16 +6,32 @@ import Foundation
 public struct DropDownMenu : Widget {
   public var entries        : [MenuItem.Entry]
   public var selectionIndex : Int
-  public var style          : ColorPair
-  public var highlightStyle : ColorPair
-  public var borderStyle    : ColorPair
+  public var styleOverride          : ColorPair?
+  public var highlightStyleOverride : ColorPair?
+  public var borderStyleOverride    : ColorPair?
 
   public init ( entries: [MenuItem.Entry], selectionIndex: Int = 0, style: ColorPair, highlightStyle: ColorPair, borderStyle: ColorPair ) {
     self.entries        = entries
     self.selectionIndex = selectionIndex
-    self.style          = style
-    self.highlightStyle = highlightStyle
-    self.borderStyle    = borderStyle
+    self.styleOverride          = style
+    self.highlightStyleOverride = highlightStyle
+    self.borderStyleOverride    = borderStyle
+  }
+
+  public init ( entries: [MenuItem.Entry], selectionIndex: Int = 0, style: ColorPair? = nil, highlightStyle: ColorPair? = nil, borderStyle: ColorPair? = nil ) {
+    self.entries                 = entries
+    self.selectionIndex          = selectionIndex
+    self.styleOverride           = style
+    self.highlightStyleOverride  = highlightStyle
+    self.borderStyleOverride     = borderStyle
+  }
+
+  public init ( selectionIndex: Int = 0, style: ColorPair? = nil, highlightStyle: ColorPair? = nil, borderStyle: ColorPair? = nil, @MenuEntryBuilder entries: () -> [MenuItem.Entry] ) {
+    self.entries                 = entries()
+    self.selectionIndex          = selectionIndex
+    self.styleOverride           = style
+    self.highlightStyleOverride  = highlightStyle
+    self.borderStyleOverride     = borderStyle
   }
 
   /// Delegates to `SelectionListSurface.layout` after converting the menu entries into the common
@@ -24,12 +40,15 @@ public struct DropDownMenu : Widget {
   /// border logic without duplicating calculations.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
     let listEntries = entries.map { SelectionListEntry(menuEntry: $0) }
+    let style        = styleOverride ?? context.theme.contentDefault
+    let highlight    = highlightStyleOverride ?? context.theme.highlight
+    let border       = borderStyleOverride ?? context.theme.windowChrome
     let surface     = SelectionListSurface.layout(
       entries        : listEntries,
       selectionIndex : selectionIndex,
       style          : style,
-      highlightStyle : highlightStyle,
-      borderStyle    : borderStyle,
+      highlightStyle : highlight,
+      borderStyle    : border,
       in             : context
     )
 

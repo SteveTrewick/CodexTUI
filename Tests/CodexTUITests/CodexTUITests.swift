@@ -788,21 +788,11 @@ final class CodexTUITests: XCTestCase {
       MenuItem.Entry(title: "First", acceleratorHint: "Ctrl+F"),
       MenuItem.Entry(title: "Second", acceleratorHint: "Ctrl+S")
     ]
-    let menuItems  = [
-      MenuItem(
-        title         : "File",
-        activationKey : .meta(.alt("f")),
-        alignment     : .leading,
-        isHighlighted : true,
-        entries       : entries
-      )
-    ]
-    let menuBar    = MenuBar(
-      items : menuItems,
-      style : theme.menuBar,
-      highlightStyle   : theme.highlight,
-      dimHighlightStyle: theme.dimHighlight
-    )
+    let menuBar    = MenuBar {
+      MenuItem(title: "File", activationKey: .meta(.alt("f")), isHighlighted: true) {
+        entries
+      }
+    }
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
     let content    = AnyWidget(buffer)
     let focusChain = FocusChain()
@@ -834,16 +824,11 @@ final class CodexTUITests: XCTestCase {
       MenuItem.Entry(title: "First"),
       MenuItem.Entry(title: "Second")
     ]
-    let menuItems  = [
-      MenuItem(
-        title         : "File",
-        activationKey : .meta(.alt("f")),
-        alignment     : .leading,
-        isHighlighted : true,
-        entries       : entries
-      )
-    ]
-    let menuBar    = MenuBar(items: menuItems, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    let menuBar    = MenuBar {
+      MenuItem(title: "File", activationKey: .meta(.alt("f")), isHighlighted: true) {
+        entries
+      }
+    }
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
     let content    = AnyWidget(buffer)
     let focusChain = FocusChain()
@@ -870,16 +855,11 @@ final class CodexTUITests: XCTestCase {
   func testMenuControllerEscapeRestoresFocusAndClearsOverlay () {
     let theme      = Theme.codex
     let entries    = [MenuItem.Entry(title: "Only Item")]
-    let menuItems  = [
-      MenuItem(
-        title         : "File",
-        activationKey : .meta(.alt("f")),
-        alignment     : .leading,
-        isHighlighted : true,
-        entries       : entries
-      )
-    ]
-    let menuBar    = MenuBar(items: menuItems, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    let menuBar    = MenuBar {
+      MenuItem(title: "File", activationKey: .meta(.alt("f")), isHighlighted: true) {
+        entries
+      }
+    }
     let buffer     = TextBuffer(identifier: FocusIdentifier("log"), isInteractive: true)
     let content    = AnyWidget(buffer)
     let focusChain = FocusChain()

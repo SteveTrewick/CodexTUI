@@ -157,7 +157,7 @@ final class DemoApplication {
     builder.statusBar    = StatusBar {
       StatusItem(text: "ESC Exit", alignment: .leading)
     }
-    builder.menuBar      = MenuBar(items: [], style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+    builder.menuBar      = MenuBar { }
     builder.addTextBuffer(logBuffer)
     builder.initialFocus = logBuffer.focusIdentifier
 
