@@ -1,5 +1,40 @@
 import Foundation
 
+@resultBuilder
+public struct StatusItemBuilder {
+  public static func buildBlock ( _ components: [StatusItem]... ) -> [StatusItem] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildOptional ( _ component: [StatusItem]? ) -> [StatusItem] {
+    return component ?? []
+  }
+
+  public static func buildEither ( first component: [StatusItem] ) -> [StatusItem] {
+    return component
+  }
+
+  public static func buildEither ( second component: [StatusItem] ) -> [StatusItem] {
+    return component
+  }
+
+  public static func buildArray ( _ components: [[StatusItem]] ) -> [StatusItem] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildExpression ( _ expression: StatusItem ) -> [StatusItem] {
+    return [expression]
+  }
+
+  public static func buildExpression ( _ expression: [StatusItem] ) -> [StatusItem] {
+    return expression
+  }
+
+  public static func buildExpression ( _ expression: StatusItem? ) -> [StatusItem] {
+    return expression.map { [$0] } ?? []
+  }
+}
+
 /// Alignment strategy controlling where a status bar item is rendered. Leading items expand from the
 /// left edge while trailing items pack tightly against the right edge.
 public enum StatusItemAlignment {
@@ -21,12 +56,16 @@ public struct StatusItem : Equatable {
 /// Widget that renders a single-line status bar with left and right aligned segments. The
 /// implementation mirrors the menu bar so menus and status bars feel visually consistent.
 public struct StatusBar : Widget {
-  public var items : [StatusItem]
-  public var style : ColorPair
+  public var items         : [StatusItem]
+  public var styleOverride : ColorPair?
+
+  public init ( style: ColorPair? = nil, @StatusItemBuilder items: () -> [StatusItem] ) {
+    self.items         = items()
+    self.styleOverride = style
+  }
 
   public init ( items: [StatusItem], style: ColorPair ) {
-    self.items = items
-    self.style = style
+    self.init(style: style) { items }
   }
 
   /// Renders the status bar along the bottom edge of the provided bounds. The function first clears
@@ -37,6 +76,7 @@ public struct StatusBar : Widget {
     let row          = context.bounds.maxRow
     let startColumn  = context.bounds.column
     let endColumn    = context.bounds.maxCol
+    let resolved     = styleOverride ?? context.theme.statusBar
     var commands     = [RenderCommand]()
     var leftColumn   = startColumn
     var rightColumn  = context.bounds.maxCol + 1
@@ -49,7 +89,7 @@ public struct StatusBar : Widget {
             column: column,
             tile  : SurfaceTile(
               character : " ",
-              attributes: style
+              attributes: resolved
             )
           )
         )
@@ -58,21 +98,21 @@ public struct StatusBar : Widget {
 
     // Leading items push characters from the left edge.
     for item in items where item.alignment == .leading {
-      commands.append(contentsOf: render(item: item, row: row, column: leftColumn))
+      commands.append(contentsOf: render(item: item, row: row, column: leftColumn, style: resolved))
       leftColumn += item.text.count + 1
     }
 
     // Trailing items render in reverse order to avoid overlapping as we walk from right to left.
     for item in items.reversed() where item.alignment == .trailing {
       let start = rightColumn - item.text.count
-      commands.append(contentsOf: render(item: item, row: row, column: start))
+      commands.append(contentsOf: render(item: item, row: row, column: start, style: resolved))
       rightColumn = start - 1
     }
 
     return WidgetLayoutResult(bounds: BoxBounds(row: row, column: context.bounds.column, width: context.bounds.width, height: 1), commands: commands)
   }
 
-  private func render ( item: StatusItem, row: Int, column: Int ) -> [RenderCommand] {
+  private func render ( item: StatusItem, row: Int, column: Int, style: ColorPair ) -> [RenderCommand] {
     var commands = [RenderCommand]()
 
     for (offset, character) in item.text.enumerated() {
