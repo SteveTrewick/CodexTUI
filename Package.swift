@@ -15,12 +15,7 @@ let package = Package(
         .library(
             name: "CodexTUI",
             targets: ["CodexTUI"]),
-        .executable(
-            name: "CodexTUIDemo",
-            targets: ["CodexTUIDemo"]),
-        .executable(
-            name: "CodexTUIDSLDemo",
-            targets: ["CodexTUIDSLDemo"]),
+
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -33,12 +28,7 @@ let package = Package(
         .target(
             name: "CodexTUI",
             dependencies: ["TerminalInput", "TerminalOutput"]),
-        .executableTarget(
-            name: "CodexTUIDemo",
-            dependencies: ["CodexTUI"]),
-        .executableTarget(
-            name: "CodexTUIDSLDemo",
-            dependencies: ["CodexTUI"]),
+        
         .testTarget(
             name: "CodexTUITests",
             dependencies: ["CodexTUI"]),
