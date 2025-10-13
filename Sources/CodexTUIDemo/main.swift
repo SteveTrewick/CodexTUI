@@ -3,29 +3,47 @@ import Foundation
 import Dispatch
 import TerminalInput
 
+//  The demo stitches together the main subsystems offered by the framework. The
+//  ShowcaseApplication builds a Scene graph composed of a menu bar, a
+//  scrollable log buffer and a status bar, then binds them to the input and
+//  overlay controllers required to react to keyboard events and modal UI.
+//  Detailed comments below document how each piece is constructed and wired.
+
 struct ThemeOption {
   var name  : String
   var theme : Theme
 }
 
+//  ShowcaseWorkspace is the root Widget rendered inside the demo Scene. It
+//  embeds a TextBuffer for log output and draws a side panel of instructions
+//  that explains how to interact with the demo.
 struct ShowcaseWorkspace : Widget {
   var logBuffer    : TextBuffer
   var theme        : Theme
   var instructions : [String]
 
+  //  Helper that wraps instruction text to the available column width so the
+  //  instructional panel renders without overflowing the border box.
   private func wrapInstruction ( _ line: String, width: Int ) -> [String] {
     guard width > 0 else { return [] }
 
     var fragments = [String]()
     var start     = line.startIndex
 
+    //  Walk the string once, slicing off visible fragments that fit inside the
+    //  panel. We manually traverse instead of delegating to Foundation so the
+    //  logic mirrors the renderer's single-width character grid.
     while start < line.endIndex {
+      //  Skip leading whitespace so we do not emit empty fragments when the
+      //  instruction line begins with spaces.
       while start < line.endIndex && line[start].isWhitespace {
         start = line.index(after: start)
       }
 
       guard start < line.endIndex else { break }
 
+      //  Take an optimistic slice that fills the width. This becomes our
+      //  fallback if we cannot locate a word boundary to break on.
       let limit = line.index(start, offsetBy: width, limitedBy: line.endIndex) ?? line.endIndex
       var end   = limit
 
@@ -33,6 +51,8 @@ struct ShowcaseWorkspace : Widget {
         var search = limit
         var found  = false
 
+        //  Scan backwards for the nearest whitespace so we can break at a
+        //  natural word boundary rather than splitting a word mid character.
         while search > start {
           search = line.index(before: search)
 
@@ -50,6 +70,8 @@ struct ShowcaseWorkspace : Widget {
             fragments.append(String(fragment))
           }
 
+          //  Resume slicing just after the whitespace character we broke on to
+          //  avoid an infinite loop when encountering multiple spaces.
           start = line.index(after: end)
 
           while start < line.endIndex && line[start].isWhitespace {
@@ -72,8 +94,17 @@ struct ShowcaseWorkspace : Widget {
     return fragments
   }
 
+  //  Layout orchestrates a two column view when there is enough terminal
+  //  width: the log buffer on the left and the instruction panel on the right.
+  //  When the terminal is too narrow only the log buffer is shown. Every
+  //  WidgetLayoutResult produced here becomes a child node of the Scene's
+  //  content tree.
   func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
+    //  rootBounds describes the full rectangle assigned by the parent Scene.
     let rootBounds = context.bounds
+    //  Pull back the padding requested by the Scene configuration so child
+    //  widgets align with the inset content area. The resulting "interior"
+    //  is the actual drawing canvas available to the workspace.
     let interior   = rootBounds.inset(by: context.environment.contentInsets)
 
     guard interior.width > 0 && interior.height > 0 else {
@@ -82,19 +113,32 @@ struct ShowcaseWorkspace : Widget {
 
     var children = [WidgetLayoutResult]()
 
+    //  The instruction panel should ignore the global content padding so the
+    //  border sits flush with the panel gutter. We therefore construct a fresh
+    //  EnvironmentValues that preserves menu/status bar heights while zeroing
+    //  content insets for all child widgets.
     let childEnvironment = EnvironmentValues(
       menuBarHeight   : context.environment.menuBarHeight,
       statusBarHeight : context.environment.statusBarHeight,
       contentInsets   : EdgeInsets()
     )
 
+    //  The workspace switches to a two column layout when the terminal is wide
+    //  enough. A gutter buffers the log from the panel, while desiredPanel
+    //  computes the panel width clamped between 24 and 36 columns so it stays
+    //  readable on very wide and moderately sized terminals alike.
     let hasSidePanel = interior.width >= 40
     let gutter       = hasSidePanel ? 2 : 0
     let desiredPanel = hasSidePanel ? max(24, min(interior.width / 3, 36)) : 0
 
+    //  Start by allocating space for the panel and gutter, assigning the
+    //  remainder to the log buffer. These values may be adjusted further below
+    //  to preserve minimum log readability.
     var logWidth      = interior.width - desiredPanel - gutter
     var panelWidth    = desiredPanel
 
+    //  If the available width would shrink the log buffer unreasonably, fall
+    //  back to a single column view and drop the instruction panel entirely.
     if logWidth < 24 {
       logWidth   = interior.width
       panelWidth = 0
@@ -103,6 +147,8 @@ struct ShowcaseWorkspace : Widget {
     logWidth   = max(1, logWidth)
     panelWidth = max(0, panelWidth)
 
+    //  The log occupies the left edge of the interior rectangle. We preserve
+    //  the top-left origin while shrinking the width to the computed logWidth.
     let logBounds = BoxBounds(
       row    : interior.row,
       column : interior.column,
@@ -120,6 +166,8 @@ struct ShowcaseWorkspace : Widget {
     children.append(logBuffer.layout(in: logContext))
 
     if panelWidth > 0 {
+      //  Anchor the panel immediately to the right of the log plus the gutter
+      //  spacing so the two columns align vertically.
       let panelColumn = logBounds.column + logBounds.width + gutter
       let panelBounds = BoxBounds(
         row    : interior.row,
@@ -135,6 +183,8 @@ struct ShowcaseWorkspace : Widget {
         environment : childEnvironment
       )
 
+      //  Draw the panel border first so subsequent text is layered on top of the
+      //  framed background.
       let border = Box(bounds: panelBounds, style: theme.windowChrome)
       children.append(border.layout(in: panelContext))
 
@@ -145,9 +195,14 @@ struct ShowcaseWorkspace : Widget {
       }()
 
       let bodyStyle = theme.contentDefault
+      //  insetRow/insetCol target the interior cell just inside the border,
+      //  while maxRow ensures we stop emitting text before hitting the bottom
+      //  edge of the frame.
       let insetRow  = panelBounds.row + 1
       let insetCol  = panelBounds.column + 2
       let maxRow    = panelBounds.maxRow - 1
+      //  The panel dedicates two columns on each side to the frame and padding,
+      //  leaving the remaining interior for wrapped instructions.
       let usableWidth = max(0, panelBounds.width - 4)
 
       if insetRow <= maxRow {
@@ -160,6 +215,8 @@ struct ShowcaseWorkspace : Widget {
       for line in instructions {
         guard currentRow <= maxRow else { break }
 
+        //  Wrap each instruction line to the usable interior width so the
+        //  textual content adheres to the panel bounds.
         let fragments = wrapInstruction(line, width: usableWidth)
 
         if fragments.isEmpty {
@@ -172,6 +229,8 @@ struct ShowcaseWorkspace : Widget {
           continue
         }
 
+        //  Emit each wrapped fragment on its own row, mimicking the TextBuffer
+        //  layout logic so instructions visually align with log entries.
         for fragment in fragments {
           guard currentRow <= maxRow else { break }
 
@@ -186,6 +245,10 @@ struct ShowcaseWorkspace : Widget {
   }
 }
 
+//  ShowcaseApplication owns the Scene, controllers and runtime resources that
+//  bring the showcase to life. The initializer assembles the UI tree, configures
+//  overlay controllers, wires up TextIO, and connects the driver callbacks so
+//  keyboard and resize events propagate through the demo.
 final class ShowcaseApplication {
   private let scene                : Scene
   private let runtimeConfiguration : RuntimeConfiguration
@@ -216,6 +279,7 @@ final class ShowcaseApplication {
   }()
 
   init () {
+    //  Static instructions displayed in the side panel to guide the user.
     instructions = [
       "Use Alt+F to open File actions.",
       "Alt+V exposes the theme picker.",
@@ -224,6 +288,10 @@ final class ShowcaseApplication {
       "ESC closes overlays and exits the demo."
     ]
 
+    //  The demo ships with three built-in themes. Each ThemeOption packages the
+    //  styling information needed to recolor the menu bar, content, highlights
+    //  and window chrome. The active theme can be switched at runtime through
+    //  the View menu.
     let midnight = ThemeOption(
       name  : "Midnight",
       theme : Theme(
@@ -263,6 +331,9 @@ final class ShowcaseApplication {
     themes      = [midnight, daybreak, neon]
     activeTheme = midnight
 
+    //  The log buffer is the interactive, scrollable text area that occupies
+    //  most of the window. It is registered with the focus chain so keyboard
+    //  input is directed to it when no modal overlays are visible.
     logBuffer = TextBuffer(
       identifier     : FocusIdentifier("showcase.log"),
       lines          : [
@@ -276,6 +347,9 @@ final class ShowcaseApplication {
       isInteractive  : true
     )
 
+    //  A Pipe connects the TextIO channel to the buffer. Background jobs write
+    //  into the pipe while the buffer listens on the read end, allowing
+    //  asynchronous messages to appear in the log.
     let pipe = Pipe()
     channelWriter = pipe.fileHandleForWriting
     logChannel    = FileHandleTextIOChannel(
@@ -285,18 +359,29 @@ final class ShowcaseApplication {
     logBuffer.attach(channel: logChannel)
     channelQueue = DispatchQueue(label: "CodexTUIDemo.ShowcaseChannel")
 
+    //  Assemble the root content widget with the log buffer and instructional
+    //  copy. The Theme is threaded through so the side panel can pick up
+    //  window chrome colors when it draws.
     workspace = ShowcaseWorkspace(
       logBuffer    : logBuffer,
       theme        : midnight.theme,
       instructions : instructions
     )
 
+    //  RuntimeConfiguration seeds the terminal bounds and other driver level
+    //  settings, such as the minimum redraw interval.
     runtimeConfiguration = RuntimeConfiguration()
     viewportBounds       = runtimeConfiguration.initialBounds
 
+    //  The focus chain manages which widget receives keyboard focus. Only the
+    //  log buffer participates in focus for this demo, but registering it keeps
+    //  the code consistent with how larger apps orchestrate focus.
     let focusChain = FocusChain()
     focusChain.register(node: logBuffer.focusNode())
 
+    //  SceneConfiguration captures the default theme and layout environment.
+    //  Here we apply padding around the content so the window chrome does not
+    //  press against the terminal edges.
     let configuration = SceneConfiguration(
       theme       : midnight.theme,
       environment : EnvironmentValues(contentInsets: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
@@ -305,6 +390,9 @@ final class ShowcaseApplication {
     menuBar   = MenuBar(items: [], style: midnight.theme.menuBar, highlightStyle: midnight.theme.highlight, dimHighlightStyle: midnight.theme.dimHighlight)
     statusBar = ShowcaseApplication.makeStatusBar(for: midnight)
 
+    //  The scene aggregates the menu bar, content widget and status bar. This
+    //  becomes the root node rendered by the driver, which orchestrates drawing
+    //  only the regions that change after each update.
     scene = Scene.standard(
       menuBar      : menuBar,
       content      : AnyWidget(workspace),
@@ -313,6 +401,9 @@ final class ShowcaseApplication {
       focusChain   : focusChain
     )
 
+    //  Controllers coordinate interactions for their respective overlays and
+    //  widgets. The menu controller navigates the menu hierarchy and updates the
+    //  scene when menu overlays open or close.
     menuController = MenuController(
       scene          : scene,
       menuBar        : menuBar,
@@ -321,27 +412,37 @@ final class ShowcaseApplication {
       viewportBounds : viewportBounds
     )
 
+    //  Handles presentation of modal message boxes triggered from the menu.
     messageBoxController = MessageBoxController(
       scene          : scene,
       viewportBounds : viewportBounds
     )
 
+    //  Presents selection lists such as the theme picker, anchored within the
+    //  current viewport bounds.
     selectionListController = SelectionListController(
       scene          : scene,
       viewportBounds : viewportBounds
     )
 
+    //  Manages single-line text entry overlays, used by the "Log Custom
+    //  Message" action.
     textEntryBoxController = TextEntryBoxController(
       scene          : scene,
       viewportBounds : viewportBounds
     )
 
+    //  TextIOController forwards terminal input events to interactive buffers.
+    //  Registering the log buffer enables live echo of user keystrokes.
     textIOController = TextIOController(
       scene  : scene,
       buffers: [logBuffer]
     )
     textIOController.register(buffer: logBuffer)
 
+    //  The driver ties the scene graph to the TerminalInput/Output backends. It
+    //  is responsible for polling keyboard events, reacting to resize signals
+    //  and redrawing the screen diff.
     driver = CodexTUI.makeDriver(scene: scene, configuration: runtimeConfiguration)
 
     driver.menuController          = menuController
@@ -350,6 +451,8 @@ final class ShowcaseApplication {
     driver.textEntryBoxController  = textEntryBoxController
     driver.textIOController        = textIOController
 
+    //  Forward key presses and resize events into instance methods so the demo
+    //  can update state and request redraws.
     driver.onKeyEvent = { [weak self] token in
       self?.handleKeyEvent(token)
     }
@@ -358,6 +461,8 @@ final class ShowcaseApplication {
       self?.updateViewport(bounds: bounds)
     }
 
+    //  The initial theme is applied last so every component picks up the color
+    //  palette that matches the selected option.
     applyTheme(midnight)
   }
 
@@ -375,6 +480,8 @@ final class ShowcaseApplication {
     logChannel.stop()
   }
 
+  //  Rebuilds the theme-dependent pieces (widgets and controllers) whenever the
+  //  user selects a new ThemeOption.
   private func applyTheme ( _ option: ThemeOption ) {
     activeTheme = option
     scene.configuration.theme = option.theme
@@ -393,6 +500,8 @@ final class ShowcaseApplication {
 
     let contentWidget = AnyWidget(workspace)
 
+    //  A fresh menu controller is created so the new menu bar uses the updated
+    //  color palette and viewport bounds.
     menuController = MenuController(
       scene          : scene,
       menuBar        : menuBar,
@@ -401,6 +510,8 @@ final class ShowcaseApplication {
       viewportBounds : viewportBounds
     )
 
+    //  Update the driver references so future events target the rebuilt
+    //  controllers, then request a redraw to show the refreshed styling.
     driver.menuController = menuController
     driver.redraw()
   }
