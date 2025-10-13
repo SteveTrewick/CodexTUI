@@ -48,6 +48,51 @@ final class CodexTUITests: XCTestCase {
     XCTAssertEqual(firstTile?.attributes.style, TerminalOutput.TextStyle.none)
   }
 
+  func testPanelWrapsBodyLinesWithinInteriorWidth () {
+    let theme        = Theme.codex
+    let bounds       = BoxBounds(row: 1, column: 1, width: 18, height: 6)
+    let context      = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let panel        = Panel(title: "Guide", bodyLines: ["Words that should wrap cleanly inside the panel interior."], theme: theme)
+    let layout       = panel.layout(in: context)
+    let commands     = layout.flattenedCommands()
+    let bodyTiles    = commands.filter { $0.tile.attributes == theme.contentDefault }
+    let interior     = bounds.column + 2
+    let interiorMax  = bounds.maxCol - 2
+
+    XCTAssertFalse(bodyTiles.isEmpty)
+    XCTAssertTrue(bodyTiles.allSatisfy { $0.column >= interior && $0.column <= interiorMax })
+
+    let uniqueRows = Set(bodyTiles.map { $0.row })
+    XCTAssertGreaterThan(uniqueRows.count, 1)
+  }
+
+  func testPanelDrawsBorderUsingWindowChrome () {
+    let theme        = Theme.codex
+    let bounds       = BoxBounds(row: 2, column: 3, width: 16, height: 5)
+    let context      = LayoutContext(bounds: bounds, theme: theme, focus: FocusChain().snapshot())
+    let panel        = Panel(title: "Info", bodyLines: ["Body"], theme: theme)
+    let layout       = panel.layout(in: context)
+    let commands     = layout.flattenedCommands()
+    let borderTiles  = commands.filter { $0.tile.attributes == theme.windowChrome }
+
+    XCTAssertFalse(borderTiles.isEmpty)
+
+    let corners = [
+      (row: bounds.row, column: bounds.column, character: "┌"),
+      (row: bounds.row, column: bounds.maxCol, character: "┐"),
+      (row: bounds.maxRow, column: bounds.column, character: "└"),
+      (row: bounds.maxRow, column: bounds.maxCol, character: "┘")
+    ]
+
+    for corner in corners {
+      let tile = borderTiles.first { command in
+        return command.row == corner.row && command.column == corner.column && String(command.tile.character) == corner.character
+      }
+
+      XCTAssertNotNil(tile)
+    }
+  }
+
   func testMenuItemMatchesPrintableAccelerator () {
     let accelerator  = TerminalInput.Token.meta(.alt("f"))
     let item         = MenuItem(title: "File", activationKey: accelerator)
