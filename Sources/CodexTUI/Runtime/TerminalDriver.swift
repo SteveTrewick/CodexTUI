@@ -168,11 +168,15 @@ public final class TerminalDriver {
   // Registers a dispatch closure that converts raw tokens into high level key events.
   private func configureInput () {
     input.dispatch = { [weak self] result in
-      switch result {
-        case .success(let token):
-          self?.route(token: token)
-        case .failure:
-          break
+      DispatchQueue.main.async { [weak self] in
+        guard let self = self else { return }
+
+        switch result {
+          case .success(let token):
+            self.route(token: token)
+          case .failure:
+            break
+        }
       }
     }
 
@@ -210,11 +214,14 @@ public final class TerminalDriver {
   // Subscribe to SIGWINCH so we can redraw when the user resizes the terminal window.
   private func configureSignalObserver () {
     signalObserver.setHandler { [weak self] in
-      guard let self = self else { return }
-      if let size = self.measureTerminalSize() {
-        self.handleResize(width: size.width, height: size.height)
-      } else {
-        self.handleResize(width: self.currentBounds.width, height: self.currentBounds.height)
+      DispatchQueue.main.async { [weak self] in
+        guard let self = self else { return }
+
+        if let size = self.measureTerminalSize() {
+          self.handleResize(width: size.width, height: size.height)
+        } else {
+          self.handleResize(width: self.currentBounds.width, height: self.currentBounds.height)
+        }
       }
     }
     signalObserver.start()
