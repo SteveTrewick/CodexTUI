@@ -28,94 +28,59 @@ struct ShowcaseWorkspace : Widget {
   //  WidgetLayoutResult produced here becomes a child node of the Scene's
   //  content tree.
   func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    //  rootBounds describes the full rectangle assigned by the parent Scene.
-    let rootBounds = context.bounds
-    //  Pull back the padding requested by the Scene configuration so child
-    //  widgets align with the inset content area. The resulting "interior"
-    //  is the actual drawing canvas available to the workspace.
-    let interior   = rootBounds.inset(by: context.environment.contentInsets)
+    let insets       = context.environment.contentInsets
+    let paddedBounds = context.bounds.inset(by: insets)
+    let hasInterior  = paddedBounds.width > 0 && paddedBounds.height > 0
 
-    guard interior.width > 0 && interior.height > 0 else {
-      return WidgetLayoutResult(bounds: rootBounds)
-    }
+    guard hasInterior else { return WidgetLayoutResult(bounds: context.bounds) }
 
-    var children = [WidgetLayoutResult]()
-
-    //  The instruction panel should ignore the global content padding so the
-    //  border sits flush with the panel gutter. We therefore construct a fresh
-    //  EnvironmentValues that preserves menu/status bar heights while zeroing
-    //  content insets for all child widgets.
-    let childEnvironment = EnvironmentValues(
-      menuBarHeight   : context.environment.menuBarHeight,
-      statusBarHeight : context.environment.statusBarHeight,
-      contentInsets   : EdgeInsets()
-    )
-
-    //  The workspace switches to a two column layout when the terminal is wide
-    //  enough. A gutter buffers the log from the panel, while desiredPanel
-    //  computes the panel width clamped between 24 and 36 columns so it stays
-    //  readable on very wide and moderately sized terminals alike.
-    let hasSidePanel = interior.width >= 40
+    let hasSidePanel = paddedBounds.width >= 40
     let gutter       = hasSidePanel ? 2 : 0
-    let desiredPanel = hasSidePanel ? max(24, min(interior.width / 3, 36)) : 0
+    let desiredPanel = hasSidePanel ? max(24, min(paddedBounds.width / 3, 36)) : 0
 
-    //  Start by allocating space for the panel and gutter, assigning the
-    //  remainder to the log buffer. These values may be adjusted further below
-    //  to preserve minimum log readability.
-    var logWidth      = interior.width - desiredPanel - gutter
-    var panelWidth    = desiredPanel
+    var logWidth   = paddedBounds.width - desiredPanel - gutter
+    var panelWidth = desiredPanel
 
-    //  If the available width would shrink the log buffer unreasonably, fall
-    //  back to a single column view and drop the instruction panel entirely.
     if logWidth < 24 {
-      logWidth   = interior.width
+      logWidth   = paddedBounds.width
       panelWidth = 0
     }
 
     logWidth   = max(1, logWidth)
     panelWidth = max(0, panelWidth)
 
-    //  The log occupies the left edge of the interior rectangle. We preserve
-    //  the top-left origin while shrinking the width to the computed logWidth.
-    let logBounds = BoxBounds(
-      row    : interior.row,
-      column : interior.column,
-      width  : logWidth,
-      height : interior.height
-    )
-
-    let logContext = LayoutContext(
-      bounds      : logBounds,
-      theme       : context.theme,
-      focus       : context.focus,
-      environment : childEnvironment
-    )
-
-    children.append(logBuffer.layout(in: logContext))
-
-    if panelWidth > 0 {
-      //  Anchor the panel immediately to the right of the log plus the gutter
-      //  spacing so the two columns align vertically.
-      let panelColumn = logBounds.column + logBounds.width + gutter
-      let panelBounds = BoxBounds(
-        row    : interior.row,
-        column : panelColumn,
-        width  : panelWidth,
-        height : interior.height
-      )
-
-      let panelContext = LayoutContext(
-        bounds      : panelBounds,
-        theme       : context.theme,
-        focus       : context.focus,
-        environment : childEnvironment
-      )
-
-      let panel = Panel(title: "CodexTUI Showcase", bodyLines: instructions, theme: theme)
-      children.append(panel.layout(in: panelContext))
+    let environmentReset : (inout EnvironmentValues) -> Void = { values in
+      values.contentInsets = EdgeInsets()
     }
 
-    return WidgetLayoutResult(bounds: rootBounds, children: children)
+    let panelWidget = Panel(title: "CodexTUI Showcase", bodyLines: instructions, theme: theme)
+
+    let content = Padding(
+      top      : insets.top,
+      leading  : insets.leading,
+      bottom   : insets.bottom,
+      trailing : insets.trailing
+    ) {
+      if panelWidth > 0 {
+        Split(
+          axis      : .horizontal,
+          firstSize : .fixed(logWidth),
+          secondSize: .fixed(panelWidth + gutter),
+          first     : {
+            EnvironmentScope(applying: environmentReset) { logBuffer }
+          },
+          second    : {
+            Padding(leading: gutter) {
+              EnvironmentScope(applying: environmentReset) { panelWidget }
+            }
+          }
+        )
+      } else {
+        EnvironmentScope(applying: environmentReset) { logBuffer }
+      }
+    }
+
+    return content.layout(in: context)
   }
 }
 

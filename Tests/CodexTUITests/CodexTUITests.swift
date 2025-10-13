@@ -34,7 +34,7 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testSceneRendersText () throws {
-    let text      = Text("Hello", origin: (row: 1, column: 1))
+    let text      = Text("Hello")
     let content   = AnyWidget(text)
     let scene     = Scene.standard(content: content)
     var surface   = Surface(width: 10, height: 3)
@@ -131,7 +131,7 @@ final class CodexTUITests: XCTestCase {
     let terminal      = TerminalOutput.Terminal(connection: connection)
     let input         = TerminalInput()
     let mode          = TestTerminalModeController()
-    let scene         = Scene.standard(content: AnyWidget(Text("", origin: (row: 1, column: 1))))
+    let scene         = Scene.standard(content: AnyWidget(Text("")))
     let configuration = RuntimeConfiguration(usesAlternateBuffer: false, hidesCursor: false)
     let driver        = TerminalDriver(
       scene          : scene,
@@ -975,7 +975,7 @@ final class CodexTUITests: XCTestCase {
   }
 
   func testSelectionListControllerHandlesKeyboardInteractions () {
-    let content    = AnyWidget(Text("", origin: (row: 1, column: 1)))
+    let content    = AnyWidget(Text(""))
     let scene      = Scene.standard(content: content)
     let controller = SelectionListController(scene: scene)
     var activated  = [Int]()
@@ -999,6 +999,57 @@ final class CodexTUITests: XCTestCase {
     XCTAssertTrue(controller.isPresenting)
     XCTAssertTrue(controller.handle(token: .escape))
     XCTAssertFalse(controller.isPresenting)
+  }
+
+  func testSplitContainerPropagatesFocusAndEnvironment () {
+    let focusIdentifier = FocusIdentifier("target")
+    let focusNode       = FocusNode(identifier: focusIdentifier)
+    let focusChain      = FocusChain(nodes: [focusNode])
+    let bounds          = BoxBounds(row: 1, column: 1, width: 10, height: 6)
+    let environment     = EnvironmentValues(menuBarHeight: 1, statusBarHeight: 1, contentInsets: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
+    let context         = LayoutContext(bounds: bounds, theme: Theme.codex, focus: focusChain.snapshot(), environment: environment)
+
+    var capturedFocusIdentifiers = [FocusIdentifier?]()
+    var capturedInsets           = [EdgeInsets]()
+
+    let recorder = RecordingWidget { layoutContext in
+      capturedFocusIdentifiers.append(layoutContext.focus.active)
+      capturedInsets.append(layoutContext.environment.contentInsets)
+    }
+
+    let container = Split(
+      axis      : .vertical,
+      firstSize : .fixed(2),
+      secondSize: .flexible,
+      first     : { recorder },
+      second    : { recorder }
+    )
+
+    _ = container.layout(in: context)
+
+    XCTAssertEqual(capturedFocusIdentifiers.count, 2)
+    XCTAssertTrue(capturedFocusIdentifiers.allSatisfy { $0 == focusIdentifier })
+    XCTAssertEqual(capturedInsets.count, 2)
+    XCTAssertTrue(capturedInsets.allSatisfy { $0 == environment.contentInsets })
+  }
+
+  func testEnvironmentScopeOverridesContentInsets () {
+    let bounds   = BoxBounds(row: 1, column: 1, width: 8, height: 4)
+    let context  = LayoutContext(bounds: bounds, theme: Theme.codex, focus: FocusChain().snapshot(), environment: EnvironmentValues(contentInsets: EdgeInsets(top: 2, leading: 2, bottom: 2, trailing: 2)))
+    var captured = [EdgeInsets]()
+
+    let recorder = RecordingWidget { layoutContext in
+      captured.append(layoutContext.environment.contentInsets)
+    }
+
+    let scope = EnvironmentScope(applying: { values in values.contentInsets = EdgeInsets() }) {
+      recorder
+    }
+
+    _ = scope.layout(in: context)
+
+    XCTAssertEqual(captured.count, 1)
+    XCTAssertEqual(captured.first, EdgeInsets())
   }
 
   private struct ModalContentArea {
@@ -1101,4 +1152,13 @@ private final class TestTerminalModeController: TerminalModeController {
 private final class TestTerminalConnection: TerminalOutput.TerminalConnection {
   func write ( data: Data ) throws { }
   func flush () throws { }
+}
+
+private struct RecordingWidget : Widget {
+  var onLayout : (LayoutContext) -> Void
+
+  func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
+    onLayout(context)
+    return WidgetLayoutResult(bounds: context.bounds)
+  }
 }

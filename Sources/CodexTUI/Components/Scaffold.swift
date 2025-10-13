@@ -18,40 +18,37 @@ public struct Scaffold : Widget {
   /// to the content widget. Each child receives its own `LayoutContext` so environment information such
   /// as theme and focus snapshot flow naturally through the tree.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    var children = [WidgetLayoutResult]()
-    let rootBounds = context.bounds
+    let menuHeight   = menuBar == nil ? 0 : context.environment.menuBarHeight
+    let statusHeight = statusBar == nil ? 0 : context.environment.statusBarHeight
 
-    var contentTop    = rootBounds.row
-    var contentBottom = rootBounds.maxRow
+    let structure = Split(
+      axis      : .vertical,
+      firstSize : .fixed(menuHeight),
+      secondSize: .flexible,
+      first     : {
+        if let menuBar = menuBar {
+          menuBar
+        } else if menuHeight > 0 {
+          Spacer(minLength: menuHeight)
+        }
+      },
+      second    : {
+        Split(
+          axis      : .vertical,
+          firstSize : .flexible,
+          secondSize: .fixed(statusHeight),
+          first     : { content },
+          second    : {
+            if let statusBar = statusBar {
+              statusBar
+            } else if statusHeight > 0 {
+              Spacer(minLength: statusHeight)
+            }
+          }
+        )
+      }
+    )
 
-    // Attach a menu bar if present and shift the content area down by one line.
-    if let menuBar = menuBar {
-      let menuBounds  = BoxBounds(row: rootBounds.row, column: rootBounds.column, width: rootBounds.width, height: 1)
-      let menuContext = LayoutContext(bounds: menuBounds, theme: context.theme, focus: context.focus, environment: context.environment)
-      let menuLayout  = menuBar.layout(in: menuContext)
-      children.append(menuLayout)
-      contentTop += 1
-    }
-
-    // Anchor the status bar to the bottom edge and shrink the content space accordingly.
-    if let statusBar = statusBar {
-      let statusBounds  = BoxBounds(row: rootBounds.maxRow, column: rootBounds.column, width: rootBounds.width, height: 1)
-      let statusContext = LayoutContext(bounds: statusBounds, theme: context.theme, focus: context.focus, environment: context.environment)
-      let statusLayout  = statusBar.layout(in: statusContext)
-      children.append(statusLayout)
-      contentBottom -= 1
-    }
-
-    if contentBottom < contentTop {
-      contentBottom = contentTop
-    }
-
-    // The remaining area is dedicated to the primary content widget.
-    let contentBounds = BoxBounds(row: contentTop, column: rootBounds.column, width: rootBounds.width, height: max(0, contentBottom - contentTop + 1))
-    let contentContext = LayoutContext(bounds: contentBounds, theme: context.theme, focus: context.focus, environment: context.environment)
-    let contentLayout  = content.layout(in: contentContext)
-    children.append(contentLayout)
-
-    return WidgetLayoutResult(bounds: rootBounds, children: children)
+    return structure.layout(in: context)
   }
 }

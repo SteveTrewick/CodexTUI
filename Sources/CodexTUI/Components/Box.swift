@@ -3,12 +3,17 @@ import Foundation
 /// Primitive widget that paints an ANSI box border. The type is used both directly by scenes and
 /// as a building block for higher-level surfaces such as modal dialogs or selection lists.
 public struct Box : Widget {
-  public var bounds : BoxBounds
-  public var style  : ColorPair
+  public var explicitBounds : BoxBounds?
+  public var style          : ColorPair
 
   public init ( bounds: BoxBounds, style: ColorPair = ColorPair() ) {
-    self.bounds  = bounds
-    self.style   = style
+    self.explicitBounds = bounds
+    self.style          = style
+  }
+
+  public init ( style: ColorPair = ColorPair() ) {
+    self.explicitBounds = nil
+    self.style          = style
   }
 
   /// Produces the render commands required to trace the four edges of the box. The routine walks
@@ -18,6 +23,12 @@ public struct Box : Widget {
   /// explicitly at the end to ensure the final appearance is deterministic regardless of the helper
   /// character decisions.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
+    let bounds = explicitBounds ?? context.bounds
+
+    guard bounds.width > 0 && bounds.height > 0 else {
+      return WidgetLayoutResult(bounds: bounds)
+    }
+
     var commands = [RenderCommand]()
 
     // First paint the horizontal edges. The helper produces junction characters when the
@@ -28,7 +39,7 @@ public struct Box : Widget {
           row   : bounds.row,
           column: column,
           tile  : SurfaceTile(
-            character : horizontalLine(for: column),
+            character : horizontalLine(for: column, in: bounds),
             attributes: style
           )
         )
@@ -38,7 +49,7 @@ public struct Box : Widget {
           row   : bounds.maxRow,
           column: column,
           tile  : SurfaceTile(
-            character : horizontalLine(for: column),
+            character : horizontalLine(for: column, in: bounds),
             attributes: style
           )
         )
@@ -52,7 +63,7 @@ public struct Box : Widget {
           row   : row,
           column: bounds.column,
           tile  : SurfaceTile(
-            character : verticalLine(for: row),
+            character : verticalLine(for: row, in: bounds),
             attributes: style
           )
         )
@@ -62,7 +73,7 @@ public struct Box : Widget {
           row   : row,
           column: bounds.maxCol,
           tile  : SurfaceTile(
-            character : verticalLine(for: row),
+            character : verticalLine(for: row, in: bounds),
             attributes: style
           )
         )
@@ -116,13 +127,13 @@ public struct Box : Widget {
   }
 
   // Chooses an appropriate character for the top/bottom edges.
-  private func horizontalLine ( for column: Int ) -> Character {
+  private func horizontalLine ( for column: Int, in bounds: BoxBounds ) -> Character {
     if column == bounds.column || column == bounds.maxCol { return "┼" }
     return "─"
   }
 
   // Chooses an appropriate character for the left/right edges.
-  private func verticalLine ( for row: Int ) -> Character {
+  private func verticalLine ( for row: Int, in bounds: BoxBounds ) -> Character {
     if row == bounds.row || row == bounds.maxRow { return "┼" }
     return "│"
   }

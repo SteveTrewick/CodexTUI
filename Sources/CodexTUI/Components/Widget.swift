@@ -49,6 +49,12 @@ public protocol Widget {
   func layout ( in context: LayoutContext ) -> WidgetLayoutResult
 }
 
+public extension Widget {
+  func eraseToAnyWidget () -> AnyWidget {
+    return AnyWidget(self)
+  }
+}
+
 /// Type eraser that allows heterogeneous widget hierarchies. It stores the layout closure of the
 /// underlying widget and forwards invocations without exposing the concrete type to callers.
 public struct AnyWidget : Widget {
