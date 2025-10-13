@@ -196,6 +196,16 @@ CodexTUI's runtime controllers encapsulate the behaviour behind menus, modal ove
 - [`MenuController`](Sources/CodexTUI/Runtime/MenuController.swift) orchestrates menu bar focus, overlay creation, and keyboard routing while remembering the previously focused widget.【F:Sources/CodexTUI/Runtime/MenuController.swift†L4-L140】
 - [`MessageBoxController`](Sources/CodexTUI/Runtime/MessageBoxController.swift) presents `MessageBox` overlays, tracks the highlighted button, and restores focus and overlays after dismissal.【F:Sources/CodexTUI/Runtime/MessageBoxController.swift†L4-L199】
 - [`SelectionListController`](Sources/CodexTUI/Runtime/SelectionListController.swift) renders scrollable `SelectionList` overlays, handles arrow-key navigation, and keeps the user's place when the viewport changes.【F:Sources/CodexTUI/Runtime/SelectionListController.swift†L4-L188】
+-   The controller now constructs lists with the builder-style initializer so overlays inherit the active theme automatically:
+
+    ```swift
+    SelectionList(title: "Recent Files") {
+      SelectionListEntry(title: "Report.md", acceleratorHint: "⌘O")
+      SelectionListEntry(title: "Specs.txt")
+    }
+    ```
+
+    Pass explicit overrides only when the overlay needs a custom palette.
 - [`TextEntryBoxController`](Sources/CodexTUI/Runtime/TextEntryBoxController.swift) powers modal text prompts by managing caret edits, button activation, and live redraw requests.【F:Sources/CodexTUI/Runtime/TextEntryBoxController.swift†L4-L244】
 - [`TextIOController`](Sources/CodexTUI/Runtime/TextIOController.swift) delivers keyboard `.text` tokens to the focused interactive buffer and schedules redraws whenever a registered buffer reports new output.【F:Sources/CodexTUI/Runtime/TextIOController.swift†L4-L53】
 
