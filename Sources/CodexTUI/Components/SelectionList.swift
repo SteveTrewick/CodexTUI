@@ -1,25 +1,72 @@
 import Foundation
 
+@resultBuilder
+public enum SelectionListEntryBuilder {
+  public static func buildBlock ( _ components: [SelectionListEntry]... ) -> [SelectionListEntry] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildExpression ( _ expression: SelectionListEntry ) -> [SelectionListEntry] {
+    return [expression]
+  }
+
+  public static func buildExpression ( _ expression: [SelectionListEntry] ) -> [SelectionListEntry] {
+    return expression
+  }
+
+  public static func buildOptional ( _ component: [SelectionListEntry]? ) -> [SelectionListEntry] {
+    return component ?? []
+  }
+
+  public static func buildEither ( first component: [SelectionListEntry] ) -> [SelectionListEntry] {
+    return component
+  }
+
+  public static func buildEither ( second component: [SelectionListEntry] ) -> [SelectionListEntry] {
+    return component
+  }
+
+  public static func buildArray ( _ components: [[SelectionListEntry]] ) -> [SelectionListEntry] {
+    return components.flatMap { $0 }
+  }
+
+  public static func buildLimitedAvailability ( _ component: [SelectionListEntry] ) -> [SelectionListEntry] {
+    return component
+  }
+}
+
 /// Composite widget that displays a titled selection list inside a bordered surface. It reuses the
 /// shared `SelectionListSurface` to render the scrollable body and adds optional title rendering on
 /// top of the calculated interior bounds.
 public struct SelectionList : Widget {
-  public var title          : String
-  public var entries        : [SelectionListEntry]
-  public var selectionIndex : Int
-  public var titleStyle     : ColorPair
-  public var style          : ColorPair
-  public var highlightStyle : ColorPair
-  public var borderStyle    : ColorPair
+  public var title                  : String
+  public var entries                : [SelectionListEntry]
+  public var selectionIndex         : Int
+  public var titleStyleOverride     : ColorPair?
+  public var contentStyleOverride   : ColorPair?
+  public var highlightStyleOverride : ColorPair?
+  public var borderStyleOverride    : ColorPair?
+
+  public init ( title: String, selectionIndex: Int = 0, titleStyleOverride: ColorPair? = nil, contentStyleOverride: ColorPair? = nil, highlightStyleOverride: ColorPair? = nil, borderStyleOverride: ColorPair? = nil, @SelectionListEntryBuilder entries: () -> [SelectionListEntry] ) {
+    self.title                  = title
+    self.entries                = entries()
+    self.selectionIndex         = selectionIndex
+    self.titleStyleOverride     = titleStyleOverride
+    self.contentStyleOverride   = contentStyleOverride
+    self.highlightStyleOverride = highlightStyleOverride
+    self.borderStyleOverride    = borderStyleOverride
+  }
 
   public init ( title: String, entries: [SelectionListEntry], selectionIndex: Int = 0, titleStyle: ColorPair, style: ColorPair, highlightStyle: ColorPair, borderStyle: ColorPair ) {
-    self.title          = title
-    self.entries        = entries
-    self.selectionIndex = selectionIndex
-    self.titleStyle     = titleStyle
-    self.style          = style
-    self.highlightStyle = highlightStyle
-    self.borderStyle    = borderStyle
+    self.init(
+      title                  : title,
+      selectionIndex         : selectionIndex,
+      titleStyleOverride     : titleStyle,
+      contentStyleOverride   : style,
+      highlightStyleOverride : highlightStyle,
+      borderStyleOverride    : borderStyle,
+      entries                : { entries }
+    )
   }
 
   /// Lays out the selection list by delegating the heavy lifting to `SelectionListSurface`. The
@@ -28,13 +75,26 @@ public struct SelectionList : Widget {
   /// we quickly exit when there is no interior space and otherwise append the title commands before
   /// returning the combined layout tree.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    let headerRows = title.isEmpty ? 0 : 1
+    let headerRows             = title.isEmpty ? 0 : 1
+    let resolvedContentStyle   = contentStyleOverride ?? context.theme.contentDefault
+    let resolvedHighlightStyle = highlightStyleOverride ?? context.theme.highlight
+    let resolvedBorderStyle    = borderStyleOverride ?? context.theme.windowChrome
+    let resolvedTitleStyle     : ColorPair
+
+    if let override = titleStyleOverride {
+      resolvedTitleStyle = override
+    } else {
+      var defaultTitle = context.theme.contentDefault
+      defaultTitle.style.insert(.bold)
+      resolvedTitleStyle = defaultTitle
+    }
+
     let surface    = SelectionListSurface.layout(
       entries        : entries,
       selectionIndex : selectionIndex,
-      style          : style,
-      highlightStyle : highlightStyle,
-      borderStyle    : borderStyle,
+      style          : resolvedContentStyle,
+      highlightStyle : resolvedHighlightStyle,
+      borderStyle    : resolvedBorderStyle,
       contentOffset  : headerRows,
       in             : context
     )
@@ -45,13 +105,13 @@ public struct SelectionList : Widget {
     let interior  = surface.interior
 
     if headerRows > 0 && interior.width > 0 {
-      renderTitle(in: interior, commands: &commands)
+      renderTitle(in: interior, style: resolvedTitleStyle, commands: &commands)
     }
 
     return WidgetLayoutResult(bounds: bounds, commands: commands, children: children)
   }
 
-  private func renderTitle ( in interior: BoxBounds, commands: inout [RenderCommand] ) {
+  private func renderTitle ( in interior: BoxBounds, style: ColorPair, commands: inout [RenderCommand] ) {
     guard interior.width > 0 else { return }
     let usableTitle = title.prefix(interior.width)
     let offset      = max(0, (interior.width - usableTitle.count) / 2)
@@ -65,7 +125,7 @@ public struct SelectionList : Widget {
           column: start + index,
           tile  : SurfaceTile(
             character : character,
-            attributes: titleStyle
+            attributes: style
           )
         )
       )

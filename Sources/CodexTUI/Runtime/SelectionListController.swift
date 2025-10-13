@@ -142,30 +142,18 @@ public final class SelectionListController {
     let maxIndex      = max(0, state.entries.count - 1)
     state.selectionIndex = max(0, min(state.selectionIndex, maxIndex))
 
-    let bounds         = SelectionList.centeredBounds(title: state.title, entries: state.entries, in: viewportBounds)
-    let theme          = scene.configuration.theme
-    let contentStyle   = state.contentStyleOverride ?? theme.contentDefault
-    let highlightStyle = state.highlightStyleOverride ?? theme.highlight
-    let borderStyle    = state.borderStyleOverride ?? theme.windowChrome
-    let titleStyle     : ColorPair
-
-    if let override = state.titleStyleOverride {
-      titleStyle = override
-    } else {
-      var defaultTitle = theme.contentDefault
-      defaultTitle.style.insert(.bold)
-      titleStyle = defaultTitle
-    }
+    let bounds = SelectionList.centeredBounds(title: state.title, entries: state.entries, in: viewportBounds)
 
     let widget = SelectionList(
-      title          : state.title,
-      entries        : state.entries,
-      selectionIndex : state.selectionIndex,
-      titleStyle     : titleStyle,
-      style          : contentStyle,
-      highlightStyle : highlightStyle,
-      borderStyle    : borderStyle
-    )
+      title                  : state.title,
+      selectionIndex         : state.selectionIndex,
+      titleStyleOverride     : state.titleStyleOverride,
+      contentStyleOverride   : state.contentStyleOverride,
+      highlightStyleOverride : state.highlightStyleOverride,
+      borderStyleOverride    : state.borderStyleOverride
+    ) {
+      state.entries
+    }
 
     let overlay = Overlay(
       bounds  : bounds,

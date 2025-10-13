@@ -926,13 +926,10 @@ final class CodexTUITests: XCTestCase {
     let context     = LayoutContext(bounds: bounds, theme: theme, focus: focus)
     let selection   = SelectionList(
       title          : title,
-      entries        : entries,
-      selectionIndex : 1,
-      titleStyle     : theme.highlight,
-      style          : theme.contentDefault,
-      highlightStyle : theme.highlight,
-      borderStyle    : theme.windowChrome
-    )
+      selectionIndex : 1
+    ) {
+      entries
+    }
     let layout      = selection.layout(in: context)
     let commands    = layout.flattenedCommands()
     let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1))
@@ -943,7 +940,9 @@ final class CodexTUITests: XCTestCase {
 
     let titleCommand = commands.last { $0.row == titleRow && $0.column == startColumn }
     XCTAssertEqual(titleCommand?.tile.character, usableTitle.first)
-    XCTAssertEqual(titleCommand?.tile.attributes, theme.highlight)
+    var expectedTitleStyle = theme.contentDefault
+    expectedTitleStyle.style.insert(.bold)
+    XCTAssertEqual(titleCommand?.tile.attributes, expectedTitleStyle)
 
     let entryStartRow   = interior.row + 1
     let firstRowCommand = commands.last { $0.row == entryStartRow && $0.column == interior.column }
