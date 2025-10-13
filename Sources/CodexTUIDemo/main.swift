@@ -84,7 +84,7 @@ final class DemoApplication {
     let builder       = CodexApp.Builder(configuration: configuration, runtimeConfiguration: RuntimeConfiguration())
 
     builder.setContent(DemoWorkspace(theme: theme, logBuffer: logBuffer))
-    builder.statusBar      = DemoApplication.makeStatusBar(theme: theme)
+    builder.statusBar      = DemoApplication.makeStatusBar()
     builder.menuBar        = DemoApplication.makePlaceholderMenuBar(theme: theme)
     builder.addTextBuffer(logBuffer)
     builder.initialFocus = logBuffer.focusIdentifier
@@ -160,13 +160,12 @@ final class DemoApplication {
     return MenuBar(items: items, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
   }
 
-  private static func makeStatusBar ( theme: Theme ) -> StatusBar {
-    let items = [
-      StatusItem(text: "ESC Exit", alignment: .leading),
-      StatusItem(text: "⌥D Demo Menu", alignment: .leading),
+  private static func makeStatusBar () -> StatusBar {
+    return StatusBar {
+      StatusItem(text: "ESC Exit", alignment: .leading)
+      StatusItem(text: "⌥D Demo Menu", alignment: .leading)
       StatusItem(text: "CodexTUIDemo", alignment: .trailing)
-    ]
-    return StatusBar(items: items, style: theme.statusBar)
+    }
   }
 
   private static func makePlaceholderMenuBar ( theme: Theme ) -> MenuBar {
