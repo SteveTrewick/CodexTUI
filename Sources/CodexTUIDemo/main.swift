@@ -97,7 +97,7 @@ final class DemoApplication {
 
     textChannel            = FileHandleTextIOChannel(readHandle: channelPipe.fileHandleForReading, writeHandle: channelPipe.fileHandleForWriting)
     driver                 = CodexTUI.makeDriver(scene: scene)
-    textIOController       = TextIOController(scene: scene, buffers: [])
+    textIOController       = TextIOController(scene: scene, buffers: [logBuffer])
     messageBoxController   = MessageBoxController(scene: scene, viewportBounds: viewportBounds)
     selectionListController = SelectionListController(scene: scene, viewportBounds: viewportBounds)
     textEntryBoxController = TextEntryBoxController(scene: scene, viewportBounds: viewportBounds, startWidth: 28)
@@ -107,7 +107,6 @@ final class DemoApplication {
     focusChain.register(node: logBuffer.focusNode())
     scene.registerFocusable(logBuffer)
     logBuffer.attach(channel: textChannel)
-    textIOController.register(buffer: logBuffer)
 
     menuBar = makeMenuBar()
     menuController.menuBar = menuBar
