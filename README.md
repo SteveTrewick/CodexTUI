@@ -75,6 +75,30 @@ import CodexTUI
 
 Understanding these pillars will help you diagnose layout issues, extend widgets, and integrate CodexTUI with other terminal data sources.
 
+## Declarative Layout DSL
+
+CodexTUI now ships with a Swift result builder dedicated to widgets. Containers such as `VStack`, `HStack`, `Split`, `Padding`, `Spacer`, and `OverlayStack` automatically compute child bounds and propagate `LayoutContext` so you rarely touch `BoxBounds` directly. Composable widgets declare a `body` assembled with these containers:
+
+```swift
+struct StatusPanel : ComposableWidget {
+  var theme : Theme
+
+  var body : some Widget {
+    OverlayStack {
+      Box(style: theme.windowChrome)
+      Padding(top: 1, leading: 2, bottom: 1, trailing: 2) {
+        VStack(spacing: 1) {
+          Label("CodexTUI", style: theme.contentDefault, alignment: .center)
+          Label("Declarative layout is now built-in.", style: theme.contentDefault)
+        }
+      }
+    }
+  }
+}
+```
+
+Because containers understand the available space they forward appropriately sized contexts to each child, keeping focus snapshots, themes, and environment values consistent without manual plumbing.
+
 ## Quick Start Demo
 
 The following example wires together the core CodexTUI widgets, attaches a `TextBuffer` to a `TextIOChannel`, and lets the `TextIOController` route keyboard text into the simulated channel. This mirrors the behaviour of the `CodexTUIDemo` target.

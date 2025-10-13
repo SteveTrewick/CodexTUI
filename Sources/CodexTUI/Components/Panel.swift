@@ -21,52 +21,60 @@ public struct Panel : Widget {
       return WidgetLayoutResult(bounds: bounds)
     }
 
-    var children = [WidgetLayoutResult]()
-
-    let border = Box(bounds: bounds, style: theme.windowChrome)
-    children.append(border.layout(in: context))
-
+    let border   = Box(style: theme.windowChrome)
     var titleStyle = theme.contentDefault
     titleStyle.style.insert(.bold)
-
     let bodyStyle   = theme.contentDefault
-    let insetRow    = bounds.row + 1
-    let insetColumn = bounds.column + 2
-    let maxRow      = bounds.maxRow - 1
-    let usableWidth = max(0, bounds.width - 4)
+    let interior    = bounds.inset(by: EdgeInsets(top: 1, leading: 2, bottom: 1, trailing: 2))
+    let usableWidth = max(0, interior.width)
+    let available   = max(0, interior.height)
 
-    if insetRow <= maxRow {
-      let titleText = Text(title, origin: (row: insetRow, column: insetColumn), style: titleStyle)
-      children.append(titleText.layout(in: context))
+    var descriptors = [(String, ColorPair)]()
+    var remaining   = available
+
+    if remaining > 0 {
+      descriptors.append((title, titleStyle))
+      remaining -= 1
     }
 
-    var currentRow = insetRow + 2
+    if remaining > 0 {
+      descriptors.append(("", bodyStyle))
+      remaining -= 1
+    }
 
-    for line in bodyLines {
-      guard currentRow <= maxRow else { break }
+    if remaining > 0 && usableWidth > 0 {
+      outer: for line in bodyLines {
+        let fragments = wrapLine(line, width: usableWidth)
 
-      let fragments = wrapLine(line, width: usableWidth)
+        if fragments.isEmpty {
+          guard remaining > 0 else { break }
+          descriptors.append(("", bodyStyle))
+          remaining -= 1
+          continue
+        }
 
-      if fragments.isEmpty {
-        guard usableWidth > 0 && currentRow <= maxRow else { continue }
-
-        let emptyLine = Text("", origin: (row: currentRow, column: insetColumn), style: bodyStyle)
-        children.append(emptyLine.layout(in: context))
-        currentRow += 1
-
-        continue
-      }
-
-      for fragment in fragments {
-        guard currentRow <= maxRow else { break }
-
-        let bodyText = Text(fragment, origin: (row: currentRow, column: insetColumn), style: bodyStyle)
-        children.append(bodyText.layout(in: context))
-        currentRow += 1
+        for fragment in fragments {
+          guard remaining > 0 else { break outer }
+          descriptors.append((fragment, bodyStyle))
+          remaining -= 1
+        }
       }
     }
 
-    return WidgetLayoutResult(bounds: bounds, children: children)
+    let overlay = OverlayStack {
+      border
+      if descriptors.isEmpty == false {
+        Padding(top: 1, leading: 2, bottom: 1, trailing: 2) {
+          VStack(spacing: 0) {
+            for descriptor in descriptors {
+              Label(descriptor.0, style: descriptor.1)
+            }
+          }
+        }
+      }
+    }
+
+    return overlay.layout(in: context)
   }
 
   private func wrapLine ( _ line: String, width: Int ) -> [String] {

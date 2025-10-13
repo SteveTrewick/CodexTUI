@@ -1,32 +1,45 @@
 import Foundation
 
-/// Minimal widget that renders an immutable string starting at a fixed origin. It is typically used
-/// for labels inside other composite widgets.
-public struct Text : Widget {
-  public var content : String
-  public var origin  : (row: Int, column: Int)
-  public var style   : ColorPair
+public struct Label : Widget {
+  public var content    : String
+  public var style      : ColorPair
+  public var alignment  : HorizontalAlignment
 
-  public init ( _ content: String, origin: (row: Int, column: Int), style: ColorPair = ColorPair() ) {
-    self.content  = content
-    self.origin   = origin
-    self.style    = style
+  public init ( _ content: String, style: ColorPair = ColorPair(), alignment: HorizontalAlignment = .leading ) {
+    self.content   = content
+    self.style     = style
+    self.alignment = alignment
   }
 
-  /// Emits a render command for each character in the string. The bounds are derived from the
-  /// configured origin and the string length so parent widgets can include the text when computing
-  /// their own sizes or hit testing logic.
   public func layout ( in context: LayoutContext ) -> WidgetLayoutResult {
-    let bounds = BoxBounds(row: origin.row, column: origin.column, width: content.count, height: 1)
-    var commands = [RenderCommand]()
-    commands.reserveCapacity(content.count)
+    guard context.bounds.width > 0 && context.bounds.height > 0 else {
+      return WidgetLayoutResult(bounds: context.bounds)
+    }
 
-    // Emit a command for every character so the renderer can treat the text like any other widget output.
-    for (offset, character) in content.enumerated() {
+    let usableWidth = max(0, context.bounds.width)
+    let truncated   = String(content.prefix(usableWidth))
+    let row         = context.bounds.row
+    let height      = min(1, context.bounds.height)
+
+    let originColumn : Int
+    if truncated.isEmpty {
+      originColumn = context.bounds.column
+    } else {
+      switch alignment {
+        case .leading  : originColumn = context.bounds.column
+        case .center   : originColumn = context.bounds.column + max(0, (usableWidth - truncated.count) / 2)
+        case .trailing : originColumn = context.bounds.maxCol - truncated.count + 1
+      }
+    }
+
+    var commands = [RenderCommand]()
+    commands.reserveCapacity(truncated.count)
+
+    for (index, character) in truncated.enumerated() {
       commands.append(
         RenderCommand(
-          row   : origin.row,
-          column: origin.column + offset,
+          row   : row,
+          column: originColumn + index,
           tile  : SurfaceTile(
             character : character,
             attributes: style
@@ -35,6 +48,9 @@ public struct Text : Widget {
       )
     }
 
+    let bounds = BoxBounds(row: row, column: originColumn, width: truncated.count, height: height)
     return WidgetLayoutResult(bounds: bounds, commands: commands)
   }
 }
+
+public typealias Text = Label
