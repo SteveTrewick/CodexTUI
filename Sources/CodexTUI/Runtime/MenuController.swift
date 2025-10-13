@@ -201,13 +201,9 @@ public final class MenuController {
     let dropDownBounds = DropDownMenu.anchoredBounds(for: entries, anchoredTo: itemBounds, in: viewportBounds)
     activeOverlayBounds = dropDownBounds
 
-    let dropDown = DropDownMenu(
-      entries        : entries,
-      selectionIndex : activeEntryIndex ?? 0,
-      style          : scene.configuration.theme.contentDefault,
-      highlightStyle : scene.configuration.theme.highlight,
-      borderStyle    : scene.configuration.theme.windowChrome
-    )
+    let dropDown = DropDownMenu(selectionIndex: activeEntryIndex ?? 0) {
+      entries
+    }
 
     let overlay = Overlay(
       bounds  : dropDownBounds,

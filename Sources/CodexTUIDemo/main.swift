@@ -85,7 +85,7 @@ final class DemoApplication {
 
     builder.setContent(DemoWorkspace(theme: theme, logBuffer: logBuffer))
     builder.statusBar      = DemoApplication.makeStatusBar()
-    builder.menuBar        = DemoApplication.makePlaceholderMenuBar(theme: theme)
+    builder.menuBar        = DemoApplication.makePlaceholderMenuBar()
     builder.addTextBuffer(logBuffer)
     builder.initialFocus = logBuffer.focusIdentifier
 
@@ -110,54 +110,25 @@ final class DemoApplication {
   }
 
   private func makeMenuBar () -> MenuBar {
-    var items = [MenuItem]()
+    return MenuBar {
+      MenuItem(title: "Demo", activationKey: .meta(.alt("d"))) {
+        MenuItem.Entry(title: "Show Welcome", acceleratorHint: "↩", action: { [weak self] in self?.presentWelcomeMessage() })
+        MenuItem.Entry(title: "Command Palette…", acceleratorHint: "⌥P", action: { [weak self] in self?.presentCommandPalette() })
+        MenuItem.Entry(title: "Compose Message…", acceleratorHint: "⌥M", action: { [weak self] in self?.promptForCustomMessage() })
+        MenuItem.Entry(title: "Quit Demo", acceleratorHint: "ESC", action: { [weak self] in self?.shutdown() })
+      }
 
-    items.append(
-      MenuItem(
-        title         : "Demo",
-        activationKey : .meta(.alt("d")),
-        alignment     : .leading,
-        isHighlighted : false,
-        isOpen        : false,
-        entries       : [
-          MenuItem.Entry(title: "Show Welcome", acceleratorHint: "↩", action: { [weak self] in self?.presentWelcomeMessage() }),
-          MenuItem.Entry(title: "Command Palette…", acceleratorHint: "⌥P", action: { [weak self] in self?.presentCommandPalette() }),
-          MenuItem.Entry(title: "Compose Message…", acceleratorHint: "⌥M", action: { [weak self] in self?.promptForCustomMessage() }),
-          MenuItem.Entry(title: "Quit Demo", acceleratorHint: "ESC", action: { [weak self] in self?.shutdown() })
-        ]
-      )
-    )
+      MenuItem(title: "Overlays", activationKey: .meta(.alt("o"))) {
+        MenuItem.Entry(title: "Message Box", acceleratorHint: "↩", action: { [weak self] in self?.presentWelcomeMessage() })
+        MenuItem.Entry(title: "Selection List", acceleratorHint: "⌥L", action: { [weak self] in self?.presentCommandPalette() })
+        MenuItem.Entry(title: "Text Entry", acceleratorHint: "⌥T", action: { [weak self] in self?.promptForCustomMessage() })
+      }
 
-    items.append(
-      MenuItem(
-        title         : "Overlays",
-        activationKey : .meta(.alt("o")),
-        alignment     : .leading,
-        isHighlighted : false,
-        isOpen        : false,
-        entries       : [
-          MenuItem.Entry(title: "Message Box", acceleratorHint: "↩", action: { [weak self] in self?.presentWelcomeMessage() }),
-          MenuItem.Entry(title: "Selection List", acceleratorHint: "⌥L", action: { [weak self] in self?.presentCommandPalette() }),
-          MenuItem.Entry(title: "Text Entry", acceleratorHint: "⌥T", action: { [weak self] in self?.promptForCustomMessage() })
-        ]
-      )
-    )
-
-    items.append(
-      MenuItem(
-        title         : "Help",
-        activationKey : .meta(.alt("h")),
-        alignment     : .trailing,
-        isHighlighted : false,
-        isOpen        : false,
-        entries       : [
-          MenuItem.Entry(title: "About CodexTUI", acceleratorHint: "↩", action: { [weak self] in self?.presentAboutDialog() }),
-          MenuItem.Entry(title: "View Tips", acceleratorHint: "⌥I", action: { [weak self] in self?.presentTipsMessage() })
-        ]
-      )
-    )
-
-    return MenuBar(items: items, style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+      MenuItem(title: "Help", activationKey: .meta(.alt("h")), alignment: .trailing) {
+        MenuItem.Entry(title: "About CodexTUI", acceleratorHint: "↩", action: { [weak self] in self?.presentAboutDialog() })
+        MenuItem.Entry(title: "View Tips", acceleratorHint: "⌥I", action: { [weak self] in self?.presentTipsMessage() })
+      }
+    }
   }
 
   private static func makeStatusBar () -> StatusBar {
@@ -168,8 +139,8 @@ final class DemoApplication {
     }
   }
 
-  private static func makePlaceholderMenuBar ( theme: Theme ) -> MenuBar {
-    return MenuBar(items: [], style: theme.menuBar, highlightStyle: theme.highlight, dimHighlightStyle: theme.dimHighlight)
+  private static func makePlaceholderMenuBar () -> MenuBar {
+    return MenuBar { }
   }
 
   private static func defaultBackgroundMessages () -> [String] {
